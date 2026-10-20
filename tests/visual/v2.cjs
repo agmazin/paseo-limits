@@ -1,0 +1,22 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE);
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const base=process.argv[2],out=base+'/v2-evidence',now='2026-10-20T11:53:00Z';
+fs.mkdirSync(out,{recursive:true});
+fs.writeFileSync(base+'/visual-plugin/fixture.json',JSON.stringify({fetchedAt:now,claude:{windows:[{windowSeconds:18000,usedPercent:69,resetsAt:'2026-10-20T14:10:00Z'},{windowSeconds:604800,usedPercent:17,resetsAt:'2026-10-24T16:00:00Z'}]},codex:{windows:[{windowSeconds:604800,usedPercent:27,resetsAt:'2026-10-27T08:15:29Z'}]}}));
+(async()=>{const b=await chromium.launch({headless:true,channel:'chrome'});const results=[],errors=[];try{
+ const state=JSON.parse(fs.readFileSync(base+'/browser-state.json'));for(const x of state.origins[0].localStorage)if(x.name==='@paseo:app-settings'){const v=JSON.parse(x.value);v.contentMaxWidth=897;x.value=JSON.stringify(v);}
+ const ctx=await b.newContext({storageState:state,viewport:{width:1710,height:1068},deviceScaleFactor:1,timezoneId:'Europe/Moscow'});
+ const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.message));await p.clock.setFixedTime(new Date(now));await p.goto('http://127.0.0.1:6783');await p.getByText('Проверка v2',{exact:true}).first().click();await p.getByText('Агент',{exact:true}).click();await p.locator('.pl-limits .win').first().waitFor();
+ const proto=await ctx.newPage();await proto.clock.setFixedTime(new Date(now));await proto.goto('file://'+path.resolve('prototype/v2.html'));
+ for(const [field,viewport,mode] of [[897,1710,'full'],[855,1207,'full'],[720,1072,'medium'],[560,912,'narrow'],[897,1710,'full']]){
+ await p.setViewportSize({width:viewport,height:1068});await p.waitForTimeout(350);
+ const m=await p.locator('.pl-limits').evaluate(row=>{const root=row.previousElementSibling,c=document.createElement('canvas').getContext('2d');let top=Infinity,bottom=-Infinity;for(const e of row.querySelectorAll('.window-name,.pct,.left,.note')){if(!e.textContent)continue;const r=document.createRange();r.selectNodeContents(e);c.font=getComputedStyle(e).font;const t=c.measureText(e.textContent),baseline=r.getBoundingClientRect().bottom-t.fontBoundingBoxDescent;top=Math.min(top,baseline-t.actualBoundingBoxAscent);bottom=Math.max(bottom,baseline+t.actualBoundingBoxDescent);}return {field:root.getBoundingClientRect().width,row:row.getBoundingClientRect().width,mode:['full','medium','narrow'].find(x=>row.classList.contains(x)),topGap:top-root.getBoundingClientRect().bottom,bottomGap:innerHeight-bottom,bar:row.querySelector('.bar').getBoundingClientRect().width,logos:[...row.querySelectorAll('.lg-prov')].map(x=>({title:x.title,width:x.firstChild.getBoundingClientRect().width})),overflow:row.scrollWidth>row.clientWidth};});
+ console.log(m);assert.equal(m.field,field);assert.equal(m.row,field);assert.equal(m.mode,mode);assert.ok(Math.abs(m.topGap-8)<.2);assert.ok(Math.abs(m.bottomGap-8)<.2);assert.equal(m.overflow,false);assert.deepEqual(m.logos,[{title:'Claude',width:16},{title:'Codex',width:16}]);results.push(m);
+ await p.screenshot({path:out+'/window-'+field+'.png'});
+ if(field===720)continue;
+ const actual=await p.locator('.pl-limits').boundingBox();const a=await p.screenshot({clip:{x:actual.x,y:actual.y-110,width:field,height:1068-actual.y+110}});
+ const index=[897,855,560].indexOf(field),ref=proto.locator('[data-col]').nth(index);const pm=await ref.locator('.limits').getAttribute('class');assert.ok(pm.includes(mode));const r=await ref.boundingBox();const image=await proto.screenshot({clip:{x:r.x,y:r.y,width:r.width,height:r.height}});
+ const compare=await ctx.newPage();await compare.setViewportSize({width:field*2+60,height:400});await compare.setContent(`<body style="margin:0;background:#1b1b1b;color:#ccc;font:14px system-ui;display:flex;gap:20px;padding:10px"><div>Плагин 0.1.2 · поле ${field}px<br><img src="data:image/png;base64,${a.toString('base64')}"></div><div>prototype/v2.html<br><img src="data:image/png;base64,${image.toString('base64')}"></div></body>`);await compare.locator('img').evaluateAll(imgs=>Promise.all(imgs.map(i=>i.decode())));await compare.screenshot({path:out+'/compare-'+field+'.png',fullPage:true});await compare.close();
+ }
+ assert.deepEqual(errors,[]);fs.writeFileSync(out+'/measurements.json',JSON.stringify({results,errors},null,2));
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

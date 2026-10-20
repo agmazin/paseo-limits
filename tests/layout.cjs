@@ -21,7 +21,8 @@ const model = compile(fs.readFileSync("shared/model.ts", "utf8"));
 const old = cp.execFileSync("git", ["show", "a9cd2f8:client/web.ts"], {
   encoding: "utf8",
 });
-const now = fs.readFileSync("client/web.ts", "utf8");
+// Historical geometry regression: compare the two pre-logo revisions.
+const now = cp.execFileSync("git", ["show", "ce5ba6e:client/web.ts"], { encoding: "utf8" });
 const data = {
   fetchedAt: new Date().toISOString(),
   claude: {

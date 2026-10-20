@@ -19,6 +19,7 @@ for (const name of [
   "tsconfig.json",
   "client/state.ts",
   "client/web.ts",
+  "client/provider-paths.ts",
   "client/ui.tsx",
   "shared/model.ts",
   "shared/contracts.ts",

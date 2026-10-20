@@ -1,6 +1,9 @@
 # Перенос прототипа - AGM-29
 
-Эталон: `prototype/v1.html`, блок CSS от `.limits` до `.tip.show`.
+Эталон строки: `prototype/v2.html`. Подсказка и состояния сохранены из v1.
+С 0.1.2 имена заменены SVG из "Диалогов", 16 px, title Claude/Codex.
+Первый поместившийся вид: full (80 px), medium (56 px, gap 14/6 px), narrow
+(без полосок). Проверка и скриншоты: `v2-verification.md`.
 Рабочая реализация - `client/web.ts`; native-поповер - `client/ui.tsx`.
 
 Размеры сохранены: шрифт 13 px, gap 18 px (12 px в узком виде), расстояния

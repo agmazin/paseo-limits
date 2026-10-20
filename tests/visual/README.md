@@ -29,3 +29,13 @@ PLAYWRIGHT_MODULE=/absolute/external/node_modules/playwright node tests/visual/c
 а не по 20-пиксельному line box. Регрессия ширины и нижних отступов отдельно
 покрыта tests/layout.cjs; живые размеры 1710/1280/980 - tests/live-layout.cjs.
 Отчёт: docs/electron-layout.md.
+
+## Актуальная проверка v2
+
+`PLAYWRIGHT_MODULE=/path/to/playwright node tests/visual/v2.cjs EXTERNAL`
+проверяет отдельный демон 6783 с включённым limits-visual и workspace "Проверка v2".
+Перед запуском выполнить prepare.mjs. Скрипт пишет fixture.json только тестового
+плагина, использует отдельный browser-state.json, фиксирует время и меняет размер
+окна. Поля: 897, 855, 720, 560 и снова 897 px. Скриншоты и JSON: EXTERNAL/v2-evidence.
+`capture.cjs` и прежний отчёт относятся к v1; `tests/layout.cjs` сравнивает
+исторические a9cd2f8 и ce5ba6e для регрессии коррекции отступов.
