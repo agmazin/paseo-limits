@@ -80,7 +80,7 @@ declare const ResizeObserver: new (fn: () => void) => {
   disconnect(): void;
 };
 const css = `
-.pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:10px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
+.pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:12px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
 .pl-limits *{box-sizing:border-box}.pl-limits > :not(.tip){flex-shrink:0}.pl-limits.medium{gap:14px}.pl-limits.medium .win{gap:6px}.pl-limits.medium .bar{width:56px}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
 .pl-limits .refresh{margin:-2px -6px -2px -4px;width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--pl-fg3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 24px;padding:0}
 .pl-limits .refresh:hover,.pl-limits .refresh.hot{background:var(--pl-raised);color:var(--pl-fg)}
@@ -149,7 +149,7 @@ export function mountRows(
       ? { top, bottom }
       : row.getBoundingClientRect();
   };
-  const textGap = 10;
+  const textGap = 12;
   const align = (root: Element, row: Element) => {
     let pane: Element | null = root.parentElement;
     while (
