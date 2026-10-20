@@ -39,6 +39,14 @@ interface Element {
   addEventListener(event: string, fn: () => void): void;
 }
 declare const document: {
+  createRange(): {
+    selectNodeContents(n: Element): void;
+    getBoundingClientRect(): { top: number; bottom: number; height: number };
+  };
+  fonts?: {
+    addEventListener(e: string, f: () => void): void;
+    removeEventListener(e: string, f: () => void): void;
+  };
   body: Element;
   head: Element;
   createElement(tag: string): Element;
@@ -46,14 +54,22 @@ declare const document: {
 };
 declare function getComputedStyle(n: Element): {
   rowGap: string;
+  columnGap: string;
+  marginTop: string;
+  marginLeft: string;
+  marginRight: string;
+  font: string;
   paddingBottom: string;
   marginBottom: string;
 };
 declare const window: {
   innerWidth: number;
+  innerHeight: number;
   addEventListener(e: string, f: () => void): void;
   removeEventListener(e: string, f: () => void): void;
 };
+declare function requestAnimationFrame(fn: () => void): number;
+declare function cancelAnimationFrame(id: number): void;
 declare const MutationObserver: new (
   fn: (records: { target: Element }[]) => void,
 ) => { observe(n: Element, o: object): void; disconnect(): void };
@@ -64,7 +80,7 @@ declare const ResizeObserver: new (fn: () => void) => {
 };
 const css = `
 .pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:8px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
-.pl-limits *{box-sizing:border-box}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
+.pl-limits *{box-sizing:border-box}.pl-limits > :not(.tip){flex-shrink:0}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
 .pl-limits .refresh{margin:-2px -6px -2px -4px;width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--pl-fg3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 24px;padding:0}
 .pl-limits .refresh:hover,.pl-limits .refresh.hot{background:var(--pl-raised);color:var(--pl-fg)}
 .pl-limits .ico{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -98,27 +114,73 @@ export function mountRows(
   document.head.append(style);
   const rows = new Map<Element, Element>();
   let disposed = false;
-  let queued = false;
+  let frame: number | null = null;
+  const canvas = document.createElement("canvas") as unknown as {
+    getContext(kind: string): {
+      font: string;
+      measureText(text: string): {
+        fontBoundingBoxDescent: number;
+        actualBoundingBoxAscent: number;
+        actualBoundingBoxDescent: number;
+      };
+    };
+  };
+  const context = canvas.getContext("2d");
+  const textBounds = (row: Element) => {
+    // A 20px line box is larger than visible 13px glyphs. Measure the ink,
+    // otherwise an apparent symmetric 13px gap can pass an 8px box assertion.
+    let top = Infinity,
+      bottom = -Infinity;
+    for (const el of row.querySelectorAll(
+      ".lg-prov,.window-name,.pct,.left,.note",
+    )) {
+      if (!el.textContent) continue;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rect = range.getBoundingClientRect();
+      context.font = getComputedStyle(el).font;
+      const metrics = context.measureText(el.textContent);
+      const baseline = rect.bottom - metrics.fontBoundingBoxDescent;
+      top = Math.min(top, baseline - metrics.actualBoundingBoxAscent);
+      bottom = Math.max(bottom, baseline + metrics.actualBoundingBoxDescent);
+    }
+    return Number.isFinite(top) && Number.isFinite(bottom)
+      ? { top, bottom }
+      : row.getBoundingClientRect();
+  };
+  const align = (root: Element, row: Element) => {
+    let pane: Element | null = root.parentElement;
+    while (
+      pane &&
+      !pane.getAttribute("data-testid")?.startsWith("workspace-pane-")
+    )
+      pane = pane.parentElement;
+    for (let pass = 0; pass < 3; pass++) {
+      const text = textBounds(row);
+      const topGap = text.top - root.getBoundingClientRect().bottom;
+      const bottomGap =
+        Math.min(
+          pane?.getBoundingClientRect().bottom ?? window.innerHeight,
+          window.innerHeight,
+        ) - text.bottom;
+      if (Math.abs(topGap - 8) < 0.1 && Math.abs(bottomGap - 8) < 0.1) break;
+      const style = getComputedStyle(row);
+      row.style.setProperty(
+        "margin-top",
+        `${(parseFloat(style.marginTop) || 0) + 8 - topGap}px`,
+      );
+      row.style.setProperty(
+        "margin-bottom",
+        `${(parseFloat(style.marginBottom) || 0) + 8 - bottomGap}px`,
+      );
+    }
+  };
   const render = (root: Element, row: Element) => {
     const { data, busy, now } = state.get();
-    // Compensate host gap and bottom padding without changing any host styles.
-    const gap =
-      parseFloat(
-        root.parentElement ? getComputedStyle(root.parentElement).rowGap : "0",
-      ) || 0;
-    let bottom = 0;
-    for (
-      let p = root.parentElement, depth = 0;
-      p && depth < 12;
-      p = p.parentElement, depth++
-    ) {
-      const s = getComputedStyle(p);
-      bottom +=
-        (parseFloat(s.paddingBottom) || 0) + (parseFloat(s.marginBottom) || 0);
-      if (p.getAttribute("data-testid")?.startsWith("workspace-pane-")) break;
-    }
-    row.style.setProperty("margin-top", `${8 - gap}px`);
-    row.style.setProperty("margin-bottom", `${8 - bottom}px`);
+    // The composer, not the injected flex item's pre-layout size, is the budget.
+    const width = root.getBoundingClientRect().width;
+    row.style.setProperty("width", `${width}px`);
+    row.style.setProperty("min-width", `${width}px`);
     const groups = windows(data);
     const old = stale(data, now);
     // Foreground blends follow the active host theme, including light themes.
@@ -198,7 +260,23 @@ export function mountRows(
       row.append(tip);
     };
     draw(false);
-    if (row.scrollWidth > row.clientWidth) draw(true);
+    // Exclude the absolutely positioned tooltip and prevent child flex shrink.
+    const children = [...row.querySelectorAll(":scope > :not(.tip)")];
+    const needed =
+      12 +
+      Math.max(0, children.length - 1) *
+        (parseFloat(getComputedStyle(row).columnGap) || 0) +
+      children.reduce((sum, child) => {
+        const style = getComputedStyle(child);
+        return (
+          sum +
+          child.getBoundingClientRect().width +
+          (parseFloat(style.marginLeft) || 0) +
+          (parseFloat(style.marginRight) || 0)
+        );
+      }, 0);
+    if (needed > width + 0.5) draw(true);
+    align(root, row);
   };
   const scan = () => {
     if (disposed) return;
@@ -244,13 +322,13 @@ export function mountRows(
     onAvailability(agents);
   };
   const schedule = () => {
-    if (!queued) {
-      queued = true;
-      queueMicrotask(() => {
-        queued = false;
-        scan();
-      });
-    }
+    if (disposed || frame !== null) return;
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      if (disposed) return;
+      scan();
+      for (const [root, row] of rows) render(root, row);
+    });
   };
   const observer = new MutationObserver((records) => {
     if (
@@ -263,24 +341,22 @@ export function mountRows(
     )
       schedule();
   });
-  const resize = new ResizeObserver(() => {
-    scan();
-    for (const [r, row] of rows) render(r, row);
-  });
+  const resize = new ResizeObserver(schedule);
+  resize.observe(document.body);
   observer.observe(document.body, {
     subtree: true,
     childList: true,
     attributes: true,
     attributeFilter: ["data-testid", "aria-selected"],
   });
-  const unsubscribe = state.subscribe(() => {
-    scan();
-    for (const [r, row] of rows) render(r, row);
-  });
+  const unsubscribe = state.subscribe(schedule);
   window.addEventListener("resize", schedule);
-  scan();
+  document.fonts?.addEventListener("loadingdone", schedule);
+  schedule();
   return () => {
     disposed = true;
+    if (frame !== null) cancelAnimationFrame(frame);
+    document.fonts?.removeEventListener("loadingdone", schedule);
     observer.disconnect();
     resize.disconnect();
     unsubscribe();

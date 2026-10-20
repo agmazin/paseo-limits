@@ -67,20 +67,35 @@ const fixture = (hot = false, old = false) => ({
       const m = await actual.locator(".pl-limits").evaluate((row) => {
         const b = row.getBoundingClientRect(),
           r = row.previousElementSibling.getBoundingClientRect();
+        const ctx = document.createElement("canvas").getContext("2d");
+        let top = Infinity,
+          bottom = -Infinity;
+        for (const el of row.querySelectorAll(
+          ".lg-prov,.window-name,.pct,.left,.note",
+        )) {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          ctx.font = getComputedStyle(el).font;
+          const m = ctx.measureText(el.textContent);
+          const baseline =
+            range.getBoundingClientRect().bottom - m.fontBoundingBoxDescent;
+          top = Math.min(top, baseline - m.actualBoundingBoxAscent);
+          bottom = Math.max(bottom, baseline + m.actualBoundingBoxDescent);
+        }
         return {
           x: b.x,
           y: b.y,
           width: b.width,
           height: b.height,
-          topGap: b.top - r.bottom,
-          bottomGap: innerHeight - b.bottom,
+          topGap: top - r.bottom,
+          bottomGap: innerHeight - bottom,
           narrow: row.classList.contains("narrow"),
           barWidth: row.querySelector(".bar").getBoundingClientRect().width,
           font: getComputedStyle(row).fontSize,
         };
       });
-      assert.equal(m.topGap, 8);
-      assert.equal(m.bottomGap, 8);
+      assert.ok(Math.abs(m.topGap - 8) < 0.2);
+      assert.ok(Math.abs(m.bottomGap - 8) < 0.2);
       assert.equal(m.narrow, scenario === "narrow");
       measurements.push({ scenario, ...m });
       const proto = await ctx.newPage();

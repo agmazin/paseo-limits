@@ -24,3 +24,8 @@ PLAYWRIGHT_MODULE=/absolute/external/node_modules/playwright node tests/visual/c
 После проверки отключить визуальный плагин, включить production-плагин на том же
 тестовом демоне и повторить проверку реальных данных, fallback и компактного вида.
 Закрыть собственный headless Chrome и остановить только созданный тестовый демон.
+
+С 0.1.1 отступы в capture.cjs измеряются по глифам (Range + TextMetrics),
+а не по 20-пиксельному line box. Регрессия ширины и нижних отступов отдельно
+покрыта tests/layout.cjs; живые размеры 1710/1280/980 - tests/live-layout.cjs.
+Отчёт: docs/electron-layout.md.
