@@ -21,8 +21,15 @@ LaunchAgent `com.agmazin.multica-usage-push` и ждёт новый `fetchedAt` 
 отдельный тестовый демон. Плагины - доверенный код с доступом к файлам и процессам
 демона; глобальный переключатель плагинов должен быть разрешён владельцем.
 
+С 20.10.2026 основной Paseo грузит плагин не из этого каталога, а из отдельного клона
+по тегу принятой версии: `/Users/agmazin/Library/Developer/paseo-releases/paseo-limits`.
+Исполнители работают в этом каталоге на месте, и перезагрузка плагина из него подхватила
+бы черновик. Первая установка:
+
 ```sh
-paseo plugin install /Users/agmazin/Yandex.Disk.localized/public/projects/local/paseo-limits
+git clone --branch v0.1.4 /Users/agmazin/Yandex.Disk.localized/public/projects/local/paseo-limits /Users/agmazin/Library/Developer/paseo-releases/paseo-limits
+ln -s /Users/agmazin/Library/Developer/paseo-limits/node_modules /Users/agmazin/Library/Developer/paseo-releases/paseo-limits/node_modules
+paseo plugin install /Users/agmazin/Library/Developer/paseo-releases/paseo-limits
 paseo plugin ls
 ```
 
@@ -34,25 +41,20 @@ Paseo предоставляет клиентские модули при заг
 
 ## Обновление и откат
 
-Перед обновлением записать текущий `git rev-parse HEAD`, убедиться в чистом
-рабочем дереве, затем выполнить:
+Принятую версию отмечают тегом `vX.Y.Z` и переключают на него клон:
 
 ```sh
-git pull --ff-only
-npm run typecheck
+git -C /Users/agmazin/Library/Developer/paseo-releases/paseo-limits fetch --tags
+git -C /Users/agmazin/Library/Developer/paseo-releases/paseo-limits checkout vX.Y.Z
 paseo plugin reload paseo-limits
 paseo plugin ls
 paseo plugin logs paseo-limits
 ```
 
+Откат - тот же `checkout` на прежний тег и `paseo plugin reload paseo-limits`.
 При изменении зависимостей сначала обновить их в каталоге вне Яндекс.Диска.
 Не выполнять `npm ci` поверх симлинка: менеджер может заменить его каталогом.
-
 Для быстрого отключения: `paseo plugin disable paseo-limits`.
-Для отката на записанную ревизию создать отдельный каталог вне Яндекс.Диска:
-`git worktree add --detach /Users/agmazin/Library/Developer/paseo-limits/rollback COMMIT`,
-затем `paseo plugin install /Users/agmazin/Library/Developer/paseo-limits/rollback --id paseo-limits`.
-Проверить `running` и логи. Исходное рабочее дерево при этом сохраняется.
 
 ## Компактный вид и запасной вариант
 
