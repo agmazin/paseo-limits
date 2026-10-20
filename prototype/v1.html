@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прототип: лимиты под полем ввода Paseo</title>
+<style>
+:root {
+  --page: #0d0d0e;
+  --win: #1b1b1b;
+  --side: #181818;
+  --line: #2a2a2a;
+  --fg: #ececec;
+  --fg2: #a6a6a6;
+  --fg3: #6f6f6f;
+  --run: #5caaf6;
+  --ok: #3f8f6a;
+  --warn: #c98a2e;
+  --bad: #d9534f;
+  --pink: #c25b7f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); font: 14px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.page-head { max-width: 1560px; margin: 20px auto 14px; padding: 0 24px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.page-head h1 { font-size: 18px; font-weight: 600; margin: 0; }
+.page-head p { margin: 0; color: var(--fg2); font-size: 13px; }
+.stage { max-width: 1560px; margin: 0 auto 32px; padding: 0 24px; display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+.window { position: relative; flex: 0 0 auto; width: 1480px; max-width: 100%; height: 620px; background: var(--win); border: 1px solid #2c2c2c; border-radius: 12px; overflow: hidden; display: flex; box-shadow: 0 30px 80px rgba(0, 0, 0, .55); transition: width .25s ease; }
+.window.narrow { width: 900px; }
+.ico { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.ico.pf { fill: currentColor; stroke: none; }
+
+.side { width: 340px; flex: 0 0 340px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.window.narrow .side { width: 240px; flex-basis: 240px; }
+.side-top { height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 14px; color: var(--fg2); }
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #3a3a3a; display: block; }
+.side-body { flex: 1; padding: 2px 0; }
+.row { display: flex; align-items: center; gap: 10px; height: 34px; margin: 0 8px; padding: 0 10px; border-radius: 9px; white-space: nowrap; overflow: hidden; }
+.row .ico { color: var(--fg2); }
+.row.sel { background: #2b2b2b; }
+.sep { height: 1px; background: var(--line); margin: 8px 0; }
+.label { display: flex; align-items: center; justify-content: space-between; height: 30px; margin: 2px 8px 0; padding: 0 10px; color: var(--fg2); font-size: 13px; }
+.pi { width: 18px; height: 18px; border-radius: 5px; background: var(--pink); color: #fff; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.wsdot { width: 7px; height: 7px; border-radius: 50%; background: #4a4a4a; margin: 0 3px; }
+.wsdot.run { width: 12px; height: 12px; margin: 0 1px; background: radial-gradient(circle, var(--run) 0 2.6px, transparent 3.2px); border: 1.6px solid var(--run); }
+.side-foot { height: 46px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: var(--fg2); }
+.side-foot span { display: flex; gap: 16px; }
+
+.main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.topbar .muted { color: var(--fg2); }
+.tabs { height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); overflow: hidden; }
+.tab { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 9px; border-radius: 8px; color: var(--fg2); font-size: 13px; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.tab .tt { overflow: hidden; text-overflow: ellipsis; }
+.tab.on { background: #262626; color: var(--fg); flex-shrink: 0; }
+.tab .ico { width: 15px; height: 15px; }
+.chat { flex: 1; overflow: hidden; padding: 30px 70px 10px; display: flex; flex-direction: column; gap: 16px; }
+.window.narrow .chat { padding: 26px 34px 10px; }
+.sk { display: flex; flex-direction: column; gap: 8px; }
+.sk i { display: block; height: 10px; border-radius: 6px; background: #252525; }
+.sk.me { align-items: flex-end; }
+.sk.me i { height: 34px; border-radius: 12px; background: #232323; }
+.sk.tool { flex-direction: row; align-items: center; gap: 10px; }
+.sk.tool b { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #333; display: block; }
+.dock { margin: 0 48px; }
+.window.narrow .dock { margin: 0 18px; }
+.track { display: flex; gap: 8px; margin-bottom: 8px; }
+.pillx { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #2e2e2e; color: var(--fg2); font-size: 13px; }
+.mini { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--run); }
+.mini::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1.4px solid rgba(92, 170, 246, .2); border-top-color: var(--run); animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.composer { border: 1px solid #2e2e2e; border-radius: 14px; padding: 14px 16px 12px; background: #1e1e1e; }
+.composer .ph { color: var(--fg3); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbar { display: flex; gap: 16px; margin-top: 22px; color: var(--fg2); font-size: 13px; align-items: center; }
+.cbar span { display: inline-flex; gap: 6px; align-items: center; }
+.cbar .right { margin-left: auto; display: inline-flex; gap: 14px; }
+.send { width: 26px; height: 26px; border-radius: 50%; background: #2f7d4f; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.send .ico { width: 15px; height: 15px; }
+
+/* строка лимитов под полем ввода */
+.limits { position: relative; display: flex; align-items: center; gap: 18px; height: 20px; margin: 7px 48px 5px; padding: 0 6px; font-size: 13px; color: var(--fg2); white-space: nowrap; }
+.window.narrow .limits { margin: 7px 18px 5px; gap: 12px; }
+.limits.stale .win, .limits.stale .lg-prov, .limits.stale .vsep { opacity: .45; }
+.refresh { margin: -2px -6px -2px -4px; width: 24px; height: 24px; border-radius: 7px; border: 0; background: transparent; color: var(--fg3); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 24px; }
+.refresh:hover { background: #262626; color: var(--fg); }
+.refresh.hot { color: var(--fg); background: #262626; }
+.refresh .ico { width: 15px; height: 15px; }
+.refresh.spin .ico { animation: spin .8s linear infinite; }
+.lg-prov { color: #d6d6d6; font-weight: 500; }
+.win { display: inline-flex; align-items: center; gap: 8px; cursor: default; }
+.bar { width: 80px; height: 6px; border-radius: 3px; background: #2a2a2a; overflow: hidden; }
+.window.narrow .bar { display: none; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--ok); transition: width .4s ease, background .3s; }
+.bar i.warn { background: var(--warn); }
+.bar i.bad { background: var(--bad); }
+.pct { color: var(--fg); font-variant-numeric: tabular-nums; }
+.pct.warn { color: #e2a64a; }
+.pct.bad { color: #ef7a76; }
+.left { color: var(--fg3); font-variant-numeric: tabular-nums; }
+.vsep { width: 1px; height: 16px; background: #333; margin: 0 2px; }
+.note { color: var(--fg3); font-size: 12px; margin-left: auto; }
+.tip { position: absolute; bottom: 30px; left: 0; background: #262626; border: 1px solid #383838; border-radius: 9px; padding: 8px 11px; font-size: 12.5px; color: var(--fg); white-space: nowrap; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; pointer-events: none; z-index: 5; }
+.tip.show { opacity: 1; transform: none; }
+
+.legend { width: 1480px; max-width: 100%; display: flex; gap: 14px; align-items: stretch; }
+.legend .card { flex: 1; }
+.card { background: #141415; border: 1px solid #262626; border-radius: 12px; padding: 14px 16px; }
+.card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg2); }
+.card ul { padding-left: 18px; margin: 0; color: #d0d0d0; font-size: 13px; line-height: 1.5; }
+.card ul li + li { margin-top: 4px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { appearance: none; border: 1px solid #333; background: #232323; color: var(--fg); padding: 6px 12px; border-radius: 9px; font: inherit; font-size: 13px; cursor: pointer; }
+.btn:hover { background: #2a2a2a; }
+.btn.on { border-color: var(--run); background: rgba(92, 170, 246, .15); }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>Лимиты под полем ввода Paseo</h1>
+  <p>Прототип v2: цифры из поллера на Маке (20.10, 13:18), время до сброса идёт живьём, кнопка слева обновляет все лимиты разом.</p>
+</header>
+
+<main class="stage">
+  <div class="window" id="win">
+    <aside class="side">
+      <div class="side-top"><span class="lights"><i></i><i></i><i></i></span><svg class="ico" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></div>
+      <div class="side-body">
+        <div class="row"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Новое рабочее пространство</div>
+        <div class="row"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>История</div>
+        <div class="row"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Поиск</div>
+        <div class="row"><svg class="ico" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg>Расписания</div>
+        <div class="sep"></div>
+        <div class="label"><span>Workspaces</span></div>
+        <div class="row"><span class="pi">A</span>AI OS</div>
+        <div class="row"><span class="wsdot"></span>agmazin</div>
+        <div class="row sel"><span class="wsdot run"></span>ЭкоЭксперт</div>
+      </div>
+      <div class="side-foot">
+        <span>
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          <svg class="ico" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+          <svg class="ico" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+        </span>
+        <span><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+      </div>
+    </aside>
+
+    <section class="main">
+      <div class="topbar"><span>ЭкоЭксперт</span><span class="muted">AI OS</span></div>
+      <div class="tabs" id="tabs"></div>
+      <div class="chat">
+        <div class="sk me"><i style="width:42%"></i></div>
+        <div class="sk"><i style="width:78%"></i><i style="width:63%"></i><i style="width:70%"></i></div>
+        <div class="sk tool"><b></b><i style="width:48%"></i></div>
+        <div class="sk tool"><b></b><i style="width:36%"></i></div>
+        <div class="sk"><i style="width:82%"></i><i style="width:57%"></i></div>
+        <div class="sk me"><i style="width:30%"></i></div>
+        <div class="sk"><i style="width:74%"></i><i style="width:61%"></i></div>
+      </div>
+      <div class="dock">
+        <div class="track"><span class="pillx"><span class="mini"></span>1 в работе</span></div>
+        <div class="composer">
+          <div class="ph">Напишите агенту сообщение, отметьте @files или используйте /commands и /skills.</div>
+          <div class="cbar">
+            <span>+</span>
+            <span id="opus"></span>
+            <span>Max</span>
+            <span>Bypass</span>
+            <span class="right"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg><span class="send"><svg class="ico" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></span>
+          </div>
+        </div>
+      </div>
+      <div class="limits" id="limits"></div>
+      <div class="tip" id="tip"></div>
+    </section>
+  </div>
+
+  <aside class="legend">
+    <div class="card">
+      <h3>Как работает</h3>
+      <ul>
+        <li>Строка под полем ввода в каждом диалоге, как в Multica.</li>
+        <li>Цифры берутся из поллера на Маке: он раз в 3 минуты единственный опрашивает Anthropic и OpenAI. Виджет раз в минуту читает его файл и сам никуда не ходит, поэтому 429 из-за двух мест не будет.</li>
+        <li>Время до сброса идёт живьём. Наведи на окно лимита - точная дата сброса.</li>
+        <li>Цвет: до 70% зелёный, 70-89% жёлтый, от 90% красный.</li>
+        <li>Кнопка в начале строки обновляет Claude и Codex разом, как в окне "Использование" Paseo: просит поллер обновить цифры сразу. Если обновляли меньше минуты назад, просто перечитывает файл, чтобы не словить 429.</li>
+        <li>Если данным больше 10 минут, цифры тускнеют, рядом видно время данных, а кнопка обновления подсвечивается.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Ограничение</h3>
+      <ul>
+        <li>Под полем ввода у плагинов нет штатного места. Строку на компьютере плагин вставит прямо в окно Paseo по постоянной метке поля ввода.</li>
+        <li>Если после обновления Paseo метка пропадёт, плагин сам покажет те же цифры строкой над полем ввода, рядом с "1 в работе". На телефоне сразу там.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Посмотри варианты</h3>
+      <div class="btns">
+        <button class="btn" data-t="hot">Лимиты почти кончились</button>
+        <button class="btn" data-t="narrow">Узкое окно</button>
+        <button class="btn" data-t="stale">Данные устарели</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+const SNAP = {
+  claude: [
+    { secs: 18000, used: 27, resetsAt: '2026-10-20T14:10:00Z' },
+    { secs: 604800, used: 13, resetsAt: '2026-10-24T16:00:00Z' },
+  ],
+  codex: [
+    { secs: 604800, used: 5, resetsAt: '2026-10-27T08:15:29Z' },
+  ],
+  fetchedAt: '2026-10-20T10:18:20Z',
+};
+const HOT = { claude: [91, 74], codex: [12] };
+const state = { hot: false, narrow: false, stale: false, busy: false };
+const CLAUDE = '<svg class="ico pf" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"/></svg>';
+const TABS = ['ЭкоЭксперт', 'Общий ChatGPT', 'Очтётико', 'Паркинг', 'Задачи amoCRM', 'Paseo'];
+const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+document.getElementById('opus').innerHTML = CLAUDE + 'Opus 5.5';
+document.getElementById('tabs').innerHTML = TABS.map((t, i) => `<div class="tab${i === TABS.length - 1 ? ' on' : ''}">${CLAUDE}<span class="tt">${t}</span></div>`).join('');
+
+function left(iso) {
+  let m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000));
+  const d = Math.floor(m / 1440); m -= d * 1440;
+  const h = Math.floor(m / 60); m -= h * 60;
+  if (d) return `${d}д ${h}ч`;
+  if (h) return `${h}ч ${m}м`;
+  return `${m}м`;
+}
+
+function exact(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  if (d.toDateString() === now.toDateString()) return `сегодня в ${hm}`;
+  return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]} в ${hm}`;
+}
+
+const tone = (p) => (p >= 90 ? 'bad' : p >= 70 ? 'warn' : '');
+const winName = (secs, narrow) => (secs <= 18000 ? (narrow ? '5ч' : 'сессия') : (narrow ? 'нед' : 'неделя'));
+
+function winHTML(provider, w, i) {
+  const used = state.hot ? HOT[provider][i] : w.used;
+  const t = tone(used);
+  const tip = `${provider === 'claude' ? 'Claude' : 'Codex'}, ${winName(w.secs, false)}: ${used}% использовано, сброс ${exact(w.resetsAt)}`;
+  return `<span class="win" data-tip="${tip}"><span>${winName(w.secs, state.narrow)}</span><span class="bar"><i class="${t}" style="width:${Math.max(used, 2)}%"></i></span><span class="pct ${t}">${used}%</span><span class="left">· ${left(w.resetsAt)}</span></span>`;
+}
+
+function render() {
+  const el = document.getElementById('limits');
+  const parts = [
+    `<button class="refresh${state.stale ? ' hot' : ''}${state.busy ? ' spin' : ''}" id="refresh" title="Обновить все лимиты"><svg class="ico" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>`,
+    `<span class="lg-prov">Claude</span>${SNAP.claude.map((w, i) => winHTML('claude', w, i)).join('')}`,
+    '<span class="vsep"></span>',
+    `<span class="lg-prov">Codex</span>${SNAP.codex.map((w, i) => winHTML('codex', w, i)).join('')}`,
+  ];
+  if (state.stale) parts.push('<span class="note">данные от 13:08</span>');
+  el.innerHTML = parts.join('');
+  el.classList.toggle('stale', state.stale);
+  document.getElementById('win').classList.toggle('narrow', state.narrow);
+}
+
+const tipEl = document.getElementById('tip');
+document.getElementById('limits').addEventListener('mouseover', (e) => {
+  const w = e.target.closest('.win');
+  if (!w) return;
+  tipEl.textContent = w.dataset.tip;
+  const mr = document.querySelector('.main').getBoundingClientRect();
+  const wr = w.getBoundingClientRect();
+  tipEl.style.left = Math.max(8, wr.left - mr.left - 6) + 'px';
+  tipEl.classList.add('show');
+});
+document.getElementById('limits').addEventListener('mouseout', (e) => {
+  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.win')) tipEl.classList.remove('show');
+});
+
+document.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => {
+  const k = b.dataset.t;
+  state[k] = !state[k];
+  b.classList.toggle('on', state[k]);
+  render();
+}));
+
+document.getElementById('limits').addEventListener('click', (e) => {
+  if (!e.target.closest('#refresh') || state.busy) return;
+  state.busy = true;
+  render();
+  setTimeout(() => {
+    state.busy = false;
+    state.stale = false;
+    SNAP.claude[0].used += 1;
+    document.querySelector('[data-t="stale"]').classList.remove('on');
+    render();
+  }, 1300);
+});
+
+render();
+setInterval(render, 30000);
+</script>
+</body>
+</html>
