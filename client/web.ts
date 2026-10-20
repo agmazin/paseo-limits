@@ -1,23 +1,68 @@
-import { Platform } from 'react-native';
-import type { PluginTheme } from '@getpaseo/plugin';
-import type { LimitsState } from './state';
-import { left, stale, tone, tooltip, windowName, windows } from '../shared/model';
+import { Platform } from "react-native";
+import type { PluginTheme } from "@getpaseo/plugin";
+import type { LimitsState } from "./state";
+import {
+  left,
+  stale,
+  tone,
+  tooltip,
+  windowName,
+  windows,
+} from "../shared/model";
 // Only this adapter touches DOM. Native clients use the registered composer pill.
 interface Element {
-  style: { cssText:string; setProperty(k:string,v:string):void };
-  className:string; textContent:string|null; innerHTML:string; isConnected:boolean; parentElement:Element|null;
-  nextElementSibling:Element|null; clientWidth:number; scrollWidth:number;
-  getAttribute(k:string):string|null; setAttribute(k:string,v:string):void;
-  querySelector(s:string):Element|null; querySelectorAll(s:string):Iterable<Element>;
-  append(...nodes:Element[]):void; after(n:Element):void; remove():void;
-  contains(n:Element):boolean; getBoundingClientRect():{top:number;bottom:number;left:number;right:number;width:number;height:number};
-  addEventListener(event:string,fn:()=>void):void;
+  style: { cssText: string; setProperty(k: string, v: string): void };
+  className: string;
+  textContent: string | null;
+  innerHTML: string;
+  isConnected: boolean;
+  parentElement: Element | null;
+  nextElementSibling: Element | null;
+  clientWidth: number;
+  scrollWidth: number;
+  getAttribute(k: string): string | null;
+  setAttribute(k: string, v: string): void;
+  querySelector(s: string): Element | null;
+  querySelectorAll(s: string): Iterable<Element>;
+  append(...nodes: Element[]): void;
+  after(n: Element): void;
+  remove(): void;
+  contains(n: Element): boolean;
+  getBoundingClientRect(): {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    width: number;
+    height: number;
+  };
+  addEventListener(event: string, fn: () => void): void;
 }
-declare const document:{body:Element;head:Element;createElement(tag:string):Element;querySelectorAll(s:string):Iterable<Element>};
-declare const window:{innerWidth:number;addEventListener(e:string,f:()=>void):void;removeEventListener(e:string,f:()=>void):void};
-declare const MutationObserver:new(fn:(records:{target:Element}[])=>void)=>{observe(n:Element,o:object):void;disconnect():void};
-declare const ResizeObserver:new(fn:()=>void)=>{observe(n:Element):void;disconnect():void};
-const css=`
+declare const document: {
+  body: Element;
+  head: Element;
+  createElement(tag: string): Element;
+  querySelectorAll(s: string): Iterable<Element>;
+};
+declare function getComputedStyle(n: Element): {
+  rowGap: string;
+  paddingBottom: string;
+  marginBottom: string;
+};
+declare const window: {
+  innerWidth: number;
+  addEventListener(e: string, f: () => void): void;
+  removeEventListener(e: string, f: () => void): void;
+};
+declare const MutationObserver: new (
+  fn: (records: { target: Element }[]) => void,
+) => { observe(n: Element, o: object): void; disconnect(): void };
+declare const ResizeObserver: new (fn: () => void) => {
+  observe(n: Element): void;
+  unobserve(n: Element): void;
+  disconnect(): void;
+};
+const css = `
 .pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:8px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
 .pl-limits *{box-sizing:border-box}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
 .pl-limits .refresh{margin:-2px -6px -2px -4px;width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--pl-fg3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 24px;padding:0}
@@ -30,67 +75,218 @@ const css=`
 .pl-limits .pct{color:var(--pl-fg);font-variant-numeric:tabular-nums}.pl-limits .pct.warn{color:#e2a64a}.pl-limits .pct.bad{color:#ef7a76}
 .pl-limits .left{color:var(--pl-fg3);font-variant-numeric:tabular-nums}.pl-limits .vsep{width:1px;min-width:1px;height:16px;background:var(--pl-border);margin:0 2px}
 .pl-limits .note{color:var(--pl-fg3);font-size:12px;margin-left:auto}
-.pl-limits .tip{position:absolute;bottom:30px;left:0;background:var(--pl-raised);border:1px solid var(--pl-border);border-radius:9px;padding:8px 11px;font-size:12.5px;color:var(--pl-fg);white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;pointer-events:none;z-index:5;line-height:1.35}
+.pl-limits .tip{position:absolute;bottom:22px;left:0;background:var(--pl-raised);border:1px solid var(--pl-border);border-radius:9px;padding:8px 11px;font-size:12.5px;color:var(--pl-fg);white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;pointer-events:none;z-index:5;line-height:1.35}
 .pl-limits .tip.show{opacity:1;transform:none}
 `;
-const icon='<svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
-function node(tag:string,cls:string,text?:string) {const el=document.createElement(tag);el.className=cls;if(text!==undefined)el.textContent=text;return el;}
-export function mountRows(state:LimitsState,theme:PluginTheme,compact:boolean,onAvailability:(available:boolean)=>void) {
-  if(Platform.OS!=='web')return ()=>{};
-  const style=node('style','');style.textContent=css;document.head.append(style);
-  const rows=new Map<Element,Element>();
-  let disposed=false;let queued=false;
-  const render=(root:Element,row:Element)=>{
-    const {data,busy,now}=state.get();
-    const groups=windows(data);
-    const old=stale(data,now);
+const icon =
+  '<svg class="ico" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>';
+function node(tag: string, cls: string, text?: string) {
+  const el = document.createElement(tag);
+  el.className = cls;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+export function mountRows(
+  state: LimitsState,
+  theme: PluginTheme,
+  compact: boolean,
+  onAvailability: (agents: Set<string>) => void,
+) {
+  if (Platform.OS !== "web") return () => {};
+  const style = node("style", "");
+  style.textContent = css;
+  document.head.append(style);
+  const rows = new Map<Element, Element>();
+  let disposed = false;
+  let queued = false;
+  const render = (root: Element, row: Element) => {
+    const { data, busy, now } = state.get();
+    // Compensate host gap and bottom padding without changing any host styles.
+    const gap =
+      parseFloat(
+        root.parentElement ? getComputedStyle(root.parentElement).rowGap : "0",
+      ) || 0;
+    let bottom = 0;
+    for (
+      let p = root.parentElement, depth = 0;
+      p && depth < 12;
+      p = p.parentElement, depth++
+    ) {
+      const s = getComputedStyle(p);
+      bottom +=
+        (parseFloat(s.paddingBottom) || 0) + (parseFloat(s.marginBottom) || 0);
+      if (p.getAttribute("data-testid")?.startsWith("workspace-pane-")) break;
+    }
+    row.style.setProperty("margin-top", `${8 - gap}px`);
+    row.style.setProperty("margin-bottom", `${8 - bottom}px`);
+    const groups = windows(data);
+    const old = stale(data, now);
     // Foreground blends follow the active host theme, including light themes.
-    row.style.setProperty('--pl-fg',theme.colors.foreground);
-    row.style.setProperty('--pl-fg2',theme.colors.foregroundMuted);
-    row.style.setProperty('--pl-fg3',`color-mix(in srgb, ${theme.colors.foregroundMuted} 64%, ${theme.colors.surface0})`);
-    row.style.setProperty('--pl-provider',`color-mix(in srgb, ${theme.colors.foreground} 69%, ${theme.colors.foregroundMuted})`);
-    row.style.setProperty('--pl-raised',theme.colors.surface1);row.style.setProperty('--pl-border',theme.colors.border);
-    const draw=(narrow:boolean)=>{
-      row.className=`pl-limits${narrow?' narrow':''}${old?' stale':''}`;
-      row.innerHTML='';
-      const refresh=node('button',`refresh${old?' hot':''}${busy?' spin':''}`);
-      refresh.setAttribute('aria-label','Обновить лимиты');refresh.setAttribute('type','button');
-      if(busy)refresh.setAttribute('disabled','');
-      refresh.innerHTML=icon;refresh.addEventListener('click',()=>void state.refresh());row.append(refresh);
-      const tip=node('span','tip');tip.setAttribute('role','tooltip');
-      groups.forEach((p,i)=>{
-        if(i)row.append(node('span','vsep'));
-        row.append(node('span','lg-prov',p.name));
-        p.windows.forEach(w=>{
-          const win=node('span','win');win.setAttribute('tabindex','0');
-          const text=tooltip(p.name,w,now);win.setAttribute('aria-label',text);
-          const bar=node('span','bar');const fill=node('i',tone(w.usedPercent));fill.style.cssText=`width:${Math.max(w.usedPercent,2)}%`;bar.append(fill);
-          win.append(node('span','window-name',windowName(w.windowSeconds,narrow)),bar,node('span',`pct ${tone(w.usedPercent)}`,`${w.usedPercent}%`),node('span','left',`· ${left(w.resetsAt,now)}`));
-          const show=()=>{tip.textContent=text;tip.className='tip show';};const hide=()=>{tip.className='tip';};
-          win.addEventListener('mouseenter',show);win.addEventListener('mouseleave',hide);win.addEventListener('focus',show);win.addEventListener('blur',hide);row.append(win);
+    row.style.setProperty("--pl-fg", theme.colors.foreground);
+    row.style.setProperty("--pl-fg2", theme.colors.foregroundMuted);
+    row.style.setProperty(
+      "--pl-fg3",
+      `color-mix(in srgb, ${theme.colors.foregroundMuted} 60.4%, ${theme.colors.surface0})`,
+    );
+    row.style.setProperty(
+      "--pl-provider",
+      `color-mix(in srgb, ${theme.colors.foreground} 69%, ${theme.colors.foregroundMuted})`,
+    );
+    row.style.setProperty("--pl-raised", theme.colors.surface1);
+    row.style.setProperty("--pl-border", theme.colors.border);
+    const draw = (narrow: boolean) => {
+      row.className = `pl-limits${narrow ? " narrow" : ""}${old ? " stale" : ""}`;
+      row.innerHTML = "";
+      const refresh = node(
+        "button",
+        `refresh${old ? " hot" : ""}${busy ? " spin" : ""}`,
+      );
+      refresh.setAttribute("aria-label", "Обновить лимиты");
+      refresh.setAttribute("type", "button");
+      if (busy) refresh.setAttribute("disabled", "");
+      refresh.innerHTML = icon;
+      refresh.addEventListener("click", () => void state.refresh());
+      row.append(refresh);
+      const tip = node("span", "tip");
+      tip.setAttribute("role", "tooltip");
+      groups.forEach((p, i) => {
+        if (i) row.append(node("span", "vsep"));
+        row.append(node("span", "lg-prov", p.name));
+        p.windows.forEach((w) => {
+          const win = node("span", "win");
+          win.setAttribute("tabindex", "0");
+          const text = tooltip(p.name, w, now);
+          win.setAttribute("aria-label", text);
+          const bar = node("span", "bar");
+          const fill = node("i", tone(w.usedPercent));
+          fill.style.cssText = `width:${Math.max(w.usedPercent, 2)}%`;
+          bar.append(fill);
+          win.append(
+            node("span", "window-name", windowName(w.windowSeconds, narrow)),
+            bar,
+            node("span", `pct ${tone(w.usedPercent)}`, `${w.usedPercent}%`),
+            node("span", "left", `· ${left(w.resetsAt, now)}`),
+          );
+          const show = () => {
+            tip.textContent = text;
+            tip.className = "tip show";
+            tip.style.setProperty(
+              "left",
+              `${Math.max(0, Math.min(win.getBoundingClientRect().left - row.getBoundingClientRect().left - 6, row.clientWidth - tip.getBoundingClientRect().width))}px`,
+            );
+          };
+          const hide = () => {
+            tip.className = "tip";
+          };
+          win.addEventListener("mouseenter", show);
+          win.addEventListener("mouseleave", hide);
+          win.addEventListener("focus", show);
+          win.addEventListener("blur", hide);
+          row.append(win);
         });
       });
-      if(data&&old)row.append(node('span','note',`данные от ${new Date(data.fetchedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`));
-      if(!groups.length)row.append(node('span','note','Данные пока недоступны'));
+      if (data && old)
+        row.append(
+          node(
+            "span",
+            "note",
+            `данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
+          ),
+        );
+      if (!groups.length)
+        row.append(node("span", "note", "Данные пока недоступны"));
       row.append(tip);
     };
-    draw(false);if(row.scrollWidth>row.clientWidth)draw(true);
+    draw(false);
+    if (row.scrollWidth > row.clientWidth) draw(true);
   };
-  const scan=()=>{
-    if(disposed)return;
-    const roots=compact?[]:[...document.querySelectorAll('[data-testid="message-input-root"]')].filter(r=>r.getBoundingClientRect().width>0);
-    for(const [root,row]of rows)if(!roots.includes(root)||!row.isConnected){row.remove();rows.delete(root);}
-    for(const root of roots){
-      let row=rows.get(root);
-      if(!row){row=node('div','pl-limits');row.setAttribute('data-paseo-limits','');root.after(row);rows.set(root,row);resize.observe(root);render(root,row);}
+  const scan = () => {
+    if (disposed) return;
+    const roots = compact
+      ? []
+      : [
+          ...document.querySelectorAll('[data-testid="message-input-root"]'),
+        ].filter((r) => r.getBoundingClientRect().width > 0);
+    for (const [root, row] of rows)
+      if (!roots.includes(root) || !row.isConnected) {
+        row.remove();
+        resize.unobserve(root);
+        rows.delete(root);
+      }
+    for (const root of roots) {
+      let row = rows.get(root);
+      if (!row) {
+        row = node("div", "pl-limits");
+        row.setAttribute("data-paseo-limits", "");
+        root.after(row);
+        rows.set(root, row);
+        resize.observe(root);
+        render(root, row);
+      }
     }
-    onAvailability(rows.size>0);
+    const agents = new Set<string>();
+    for (const root of rows.keys()) {
+      for (let p = root.parentElement; p; p = p.parentElement) {
+        if (!p.getAttribute("data-testid")?.startsWith("workspace-pane-"))
+          continue;
+        for (const tab of p.querySelectorAll(
+          '[data-testid^="workspace-tab-agent_"][aria-selected="true"]',
+        )) {
+          agents.add(
+            tab
+              .getAttribute("data-testid")!
+              .slice("workspace-tab-agent_".length),
+          );
+        }
+        break;
+      }
+    }
+    onAvailability(agents);
   };
-  const schedule=()=>{if(!queued){queued=true;queueMicrotask(()=>{queued=false;scan();});}};
-  const observer=new MutationObserver(records=>{if(records.some(r=>![...rows.values()].some(row=>row===r.target||row.contains(r.target))))schedule();});
-  const resize=new ResizeObserver(()=>{scan();for(const [r,row]of rows)render(r,row);});
-  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-testid']});
-  const unsubscribe=state.subscribe(()=>{scan();for(const [r,row]of rows)render(r,row);});
-  window.addEventListener('resize',schedule);scan();
-  return ()=>{disposed=true;observer.disconnect();resize.disconnect();unsubscribe();window.removeEventListener('resize',schedule);for(const row of rows.values())row.remove();style.remove();onAvailability(false);};
+  const schedule = () => {
+    if (!queued) {
+      queued = true;
+      queueMicrotask(() => {
+        queued = false;
+        scan();
+      });
+    }
+  };
+  const observer = new MutationObserver((records) => {
+    if (
+      records.some(
+        (r) =>
+          ![...rows.values()].some(
+            (row) => row === r.target || row.contains(r.target),
+          ),
+      )
+    )
+      schedule();
+  });
+  const resize = new ResizeObserver(() => {
+    scan();
+    for (const [r, row] of rows) render(r, row);
+  });
+  observer.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["data-testid", "aria-selected"],
+  });
+  const unsubscribe = state.subscribe(() => {
+    scan();
+    for (const [r, row] of rows) render(r, row);
+  });
+  window.addEventListener("resize", schedule);
+  scan();
+  return () => {
+    disposed = true;
+    observer.disconnect();
+    resize.disconnect();
+    unsubscribe();
+    window.removeEventListener("resize", schedule);
+    for (const row of rows.values()) row.remove();
+    style.remove();
+    onAvailability(new Set());
+  };
 }
