@@ -80,6 +80,8 @@ declare const ResizeObserver: new (fn: () => void) => {
   disconnect(): void;
 };
 const css = `
+.pl-limits.demo-data{height:40px;flex-wrap:wrap;row-gap:0}.pl-limits .demo{flex-basis:100%;margin:0;text-align:right}.pl-limits.narrow .left{display:none}
+
 .pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:12px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
 .pl-limits *{box-sizing:border-box}.pl-limits > :not(.tip){flex-shrink:0}.pl-limits.medium{gap:14px}.pl-limits.medium .win{gap:6px}.pl-limits.medium .bar{width:56px}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
 .pl-limits .refresh{margin:-2px -6px -2px -4px;width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--pl-fg3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 24px;padding:0}
@@ -199,7 +201,7 @@ export function mountRows(
     row.style.setProperty("--pl-raised", theme.colors.surface1);
     row.style.setProperty("--pl-border", theme.colors.border);
     const draw = (mode: "full" | "medium" | "narrow") => {
-      row.className = `pl-limits ${mode}${old ? " stale" : ""}`;
+      row.className = `pl-limits ${mode}${old ? " stale" : ""}${data?.testData ? " demo-data" : ""}`;
       row.innerHTML = "";
       const refresh = node(
         "button",
@@ -263,13 +265,13 @@ export function mountRows(
         );
       if (!groups.length)
         row.append(node("span", "note", "Данные пока недоступны"));
-      if(data?.testData)row.append(node("span","note","Тестовые данные"));
+      if(data?.testData)row.append(node("span","note demo","Тестовые данные"));
       row.append(tip);
     };
     for (const mode of ["full", "medium", "narrow"] as const) {
       draw(mode);
       // Exclude the absolutely positioned tooltip and prevent child flex shrink.
-      const children = [...row.querySelectorAll(":scope > :not(.tip)")];
+      const children = [...row.querySelectorAll(":scope > :not(.tip):not(.demo)")];
       const needed =
         12 +
         Math.max(0, children.length - 1) *
@@ -289,9 +291,7 @@ export function mountRows(
   };
   const scan = () => {
     if (disposed) return;
-    const roots = compact
-      ? []
-      : [
+    const roots = [
           ...document.querySelectorAll('[data-testid="message-input-root"]'),
         ].filter((r) => r.getBoundingClientRect().width > 0);
     for (const [root, row] of rows)
@@ -328,6 +328,7 @@ export function mountRows(
         break;
       }
     }
+    if(compact && rows.size)agents.add("*");
     onAvailability(agents);
   };
   const schedule = () => {

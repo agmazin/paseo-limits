@@ -21,7 +21,7 @@ export default function contribute(client: PluginClientContext) {
     for (const [id, pill] of pills)
       pill.update({
         label: label(state.get().data),
-        visible: !available.has(id),
+        visible: !available.has("*") && !available.has(id),
       });
   };
   const unsubscribe = state.subscribe(update);
@@ -56,7 +56,7 @@ export default function contribute(client: PluginClientContext) {
           title: "Лимиты подписок",
           label: label(state.get().data),
           icon: "Gauge",
-          visible: !available.has(agent.id),
+          visible: !available.has("*") && !available.has(agent.id),
           behavior: { kind: "popover", Content },
         },
       }),
