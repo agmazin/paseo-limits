@@ -80,6 +80,8 @@ declare const ResizeObserver: new (fn: () => void) => {
   disconnect(): void;
 };
 const css = `
+.pl-limits.narrow.stale:not(.demo-data){height:40px;flex-wrap:wrap;row-gap:0}.pl-limits.narrow.stale .note:not(.demo){flex-basis:100%;margin:0;text-align:right}
+
 .pl-limits.demo-data{height:40px;flex-wrap:wrap;row-gap:0}.pl-limits .demo{flex-basis:100%;margin:0;text-align:right}.pl-limits.narrow .left{display:none}
 
 .pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:12px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
@@ -255,7 +257,7 @@ export function mountRows(
           row.append(win);
         });
       });
-      if (data && old)
+      if (data && old && !data.testData)
         row.append(
           node(
             "span",
@@ -265,7 +267,7 @@ export function mountRows(
         );
       if (!groups.length)
         row.append(node("span", "note", "Данные пока недоступны"));
-      if(data?.testData)row.append(node("span","note demo","Тестовые данные"));
+      if(data?.testData)row.append(node("span","note demo",old ? `Тестовые данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "Тестовые данные"));
       row.append(tip);
     };
     for (const mode of ["full", "medium", "narrow"] as const) {

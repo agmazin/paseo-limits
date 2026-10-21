@@ -27,7 +27,7 @@ LaunchAgent `com.agmazin.multica-usage-push` и ждёт новый `fetchedAt` 
 бы черновик. Первая установка:
 
 ```sh
-git clone --branch v0.2.3 /Users/agmazin/Yandex.Disk.localized/public/projects/local/paseo-limits /Users/agmazin/Library/Developer/paseo-releases/paseo-limits
+git clone --branch v0.2.4 /Users/agmazin/Yandex.Disk.localized/public/projects/local/paseo-limits /Users/agmazin/Library/Developer/paseo-releases/paseo-limits
 ln -s /Users/agmazin/Library/Developer/paseo-limits/node_modules /Users/agmazin/Library/Developer/paseo-releases/paseo-limits/node_modules
 paseo plugin install /Users/agmazin/Library/Developer/paseo-releases/paseo-limits
 paseo plugin ls
