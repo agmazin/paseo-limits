@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { readLimits, refreshLimits, snapshotSchema } from "./shared/contracts";
 import { createService } from "./server/service";
+import { demoSnapshot } from "./server/demo";
 import { nativeReader } from "./server/paseo";
 const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
@@ -50,7 +51,7 @@ export default function contribute(server: PluginServerContext) {
   };
   const read = async (input:unknown, next: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
     context=next;
-    const snapshot=await readSource(input,next);
+    const snapshot=demoSnapshot(await readSource(input,next),process.env.PASEO_LIMITS_DEMO_RENEW==="true");
     const file=process.env.PASEO_LIMITS_EXPORT_FILE;
     if(file && snapshot){
       await writeFile(file+".new",JSON.stringify(snapshot),{mode:0o600});
