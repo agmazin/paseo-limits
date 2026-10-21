@@ -83,7 +83,7 @@ declare const ResizeObserver: new (fn: () => void) => {
 const css = `
 .pl-limits.narrow.stale:not(.demo-data){height:40px;flex-wrap:wrap;row-gap:0}.pl-limits.narrow.stale .note:not(.demo){flex-basis:100%;margin:0;text-align:right}
 
-.pl-limits.demo-data{height:40px;flex-wrap:wrap;row-gap:0}.pl-limits .demo{flex-basis:100%;margin:0;text-align:right}.pl-limits.narrow .left{display:none}
+.pl-limits.demo-data,.pl-limits.personal-data{height:40px;flex-wrap:wrap;row-gap:0}.pl-limits .demo,.pl-limits .personal{flex-basis:100%;margin:0;text-align:right}.pl-limits.narrow .left{display:none}
 
 .pl-limits{position:relative;display:flex;align-items:center;gap:18px;height:20px;min-height:20px;margin:12px 0;padding:0 6px;font:13px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:var(--pl-fg2);white-space:nowrap;box-sizing:border-box;-webkit-font-smoothing:antialiased;flex-shrink:0}
 .pl-limits *{box-sizing:border-box}.pl-limits > :not(.tip){flex-shrink:0}.pl-limits.medium{gap:14px}.pl-limits.medium .win{gap:6px}.pl-limits.medium .bar{width:56px}.pl-limits.narrow{gap:12px}.pl-limits.stale .win,.pl-limits.stale .lg-prov,.pl-limits.stale .vsep{opacity:.45}
@@ -204,7 +204,7 @@ export function mountRows(
     row.style.setProperty("--pl-raised", theme.colors.surface1);
     row.style.setProperty("--pl-border", theme.colors.border);
     const draw = (mode: "full" | "medium" | "narrow") => {
-      row.className = `pl-limits ${mode}${old ? " stale" : ""}${data?.testData ? " demo-data" : ""}`;
+      row.className = `pl-limits ${mode}${old ? " stale" : ""}${data?.testData ? " demo-data" : ""}${data?.personal ? " personal-data" : ""}`;
       row.innerHTML = "";
       const refresh = node(
         "button",
@@ -258,7 +258,7 @@ export function mountRows(
           row.append(win);
         });
       });
-      if (data && old && !data.testData)
+      if (data && old && !data.testData && !data.personal)
         row.append(
           node(
             "span",
@@ -268,14 +268,14 @@ export function mountRows(
         );
       if (!groups.length)
         row.append(node("span", "note", "Данные пока недоступны"));
-      if(data?.personal&&!data.testData)row.append(node("span","note personal","Мои лимиты"));
+      if(data?.personal&&!data.testData)row.append(node("span","note personal","Мои лимиты"+(old ? ` · данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "")));
       if(data?.testData)row.append(node("span","note demo",(data.personal ? "Мои лимиты · " : "") + (old ? `Тестовые данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "Тестовые данные")));
       row.append(tip);
     };
     for (const mode of ["full", "medium", "narrow"] as const) {
       draw(mode);
       // Exclude the absolutely positioned tooltip and prevent child flex shrink.
-      const children = [...row.querySelectorAll(":scope > :not(.tip):not(.demo)")];
+      const children = [...row.querySelectorAll(":scope > :not(.tip):not(.demo):not(.personal)")];
       const needed =
         12 +
         Math.max(0, children.length - 1) *
@@ -291,7 +291,7 @@ export function mountRows(
         }, 0);
       if (needed <= width + 0.5) break;
     }
-    if(compact || data?.testData){
+    if(compact || data?.testData || data?.personal){
       row.style.setProperty("margin-top","12px");
       row.style.setProperty("margin-bottom","12px");
     } else align(root, row);
