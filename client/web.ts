@@ -268,8 +268,8 @@ export function mountRows(
         );
       if (!groups.length)
         row.append(node("span", "note", "Данные пока недоступны"));
-      if(data?.personal)row.append(node("span","note personal","Мои лимиты"));
-      if(data?.testData)row.append(node("span","note demo",old ? `Тестовые данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "Тестовые данные"));
+      if(data?.personal&&!data.testData)row.append(node("span","note personal","Мои лимиты"));
+      if(data?.testData)row.append(node("span","note demo",(data.personal ? "Мои лимиты · " : "") + (old ? `Тестовые данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "Тестовые данные")));
       row.append(tip);
     };
     for (const mode of ["full", "medium", "narrow"] as const) {
