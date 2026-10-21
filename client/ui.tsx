@@ -20,6 +20,7 @@ export function Details({
           {busy ? "Обновление..." : "Обновить лимиты"}
         </Text>
       </Pressable>
+      {data?.personal && <Text style={{color:theme.colors.foregroundMuted}}>Мои лимиты</Text>}
       {data?.testData && <Text style={{color:theme.colors.foregroundMuted}}>Тестовые данные</Text>}
       {windows(data).map((p) => (
         <View key={p.key} style={{ gap: 8 }}>

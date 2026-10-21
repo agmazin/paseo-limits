@@ -5,6 +5,7 @@ export interface LimitWindow {
 }
 export interface Snapshot {
   testData?: boolean;
+  personal?: boolean;
   claude?: { windows: LimitWindow[] };
   codex?: { windows: LimitWindow[] };
   fetchedAt: string;
@@ -13,7 +14,7 @@ export function windows(s: Snapshot | null) {
   return (["claude", "codex"] as const).flatMap((key) => {
     const list =
       s?.[key]?.windows.filter((w) =>
-        key === "claude"
+        (key === "claude" || s?.personal)
           ? [18000, 604800].includes(w.windowSeconds)
           : w.windowSeconds === 604800,
       ) ?? [];
@@ -56,7 +57,7 @@ export function exact(iso: string, now = Date.now()) {
     : `${["вс", "пн", "вт", "ср", "чт", "пт", "сб"][d.getDay()]} ${d.getDate()} ${["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][d.getMonth()]} в ${hm}`;
 }
 export const label = (s: Snapshot | null) =>
-  windows(s)
+  (s?.personal ? "Мои лимиты · " : "") + windows(s)
     .map(
       (p) =>
         `${p.name} ${p.windows.map((w) => `${100-w.usedPercent}% осталось`).join(" · ")}`,

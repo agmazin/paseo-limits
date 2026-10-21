@@ -26,6 +26,12 @@ export function createState(client: PluginClientContext) {
       console.error("Лимиты: RPC чтения недоступен");
     }
   }
+  let reread:ReturnType<typeof setTimeout>|undefined;
+  const stopAgents=client.paseo.agents.subscribe(update=>{
+    if(!value.data?.personal||update.kind!=="upsert"||update.agent.status!=="idle")return;
+    if(reread)clearTimeout(reread);
+    reread=setTimeout(()=>void read(),100);
+  });
   const polling = setInterval(() => void read(), 60000);
   const ticking = setInterval(() => {
     value = { ...value, now: Date.now() };
@@ -59,6 +65,8 @@ export function createState(client: PluginClientContext) {
     },
     dispose() {
       alive = false;
+      stopAgents();
+      if(reread)clearTimeout(reread);
       clearInterval(polling);
       clearInterval(ticking);
       queries.clear();

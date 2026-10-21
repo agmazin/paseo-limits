@@ -1,5 +1,6 @@
 import { displaySettings } from "./shared/settings";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
+import { writeFile, rename, chmod } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -39,14 +40,32 @@ export default function contribute(server: PluginServerContext) {
     log: (message) => console.error(message),
   });
   let readNative: ReturnType<typeof nativeReader> | undefined;
-  const read = async (_:unknown, {paseo}: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+  let context: Parameters<Parameters<typeof server.handle>[1]>[1] | undefined;
+  const readSource = async (_:unknown, {paseo}: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
     if (process.env.PASEO_LIMITS_SOURCE === "paseo" && !process.env.PASEO_LIMITS_FILE) {
       readNative ??= nativeReader(() => paseo.providers.listUsage());
       try { return await readNative(); } catch { return null; }
     }
     return service.read();
   };
-  server.handle(readLimits, read);
-  server.handle(refreshLimits, process.env.PASEO_LIMITS_SOURCE === "paseo" || process.env.PASEO_LIMITS_FILE ? read : () => service.refresh());
-  return () => {};
+  const read = async (input:unknown, next: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+    context=next;
+    const snapshot=await readSource(input,next);
+    const file=process.env.PASEO_LIMITS_EXPORT_FILE;
+    if(file && snapshot){
+      await writeFile(file+".new",JSON.stringify(snapshot),{mode:0o600});
+      await chmod(file+".new",0o600);
+      await rename(file+".new",file);
+    }
+    return snapshot;
+  };
+  let pending:Promise<unknown>|undefined;
+  const serializedRead = (input:unknown,next: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+    if(pending)return pending as ReturnType<typeof read>;
+    const task=read(input,next).finally(()=>{pending=undefined;});pending=task;return task;
+  };
+  const timer=process.env.PASEO_LIMITS_EXPORT_FILE?setInterval(()=>{if(context)void serializedRead({},context).catch(()=>console.error("Не удалось обновить серверный снимок лимитов"));},60000):undefined;
+  server.handle(readLimits, serializedRead);
+  server.handle(refreshLimits, process.env.PASEO_LIMITS_SOURCE === "paseo" || process.env.PASEO_LIMITS_FILE ? serializedRead : () => service.refresh());
+  return () => {if(timer)clearInterval(timer);};
 }

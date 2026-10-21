@@ -115,3 +115,13 @@ test("timeout stops after 30 seconds and permits retry after cooldown", async ()
   await service.refresh();
   assert.equal(kicks, 2);
 });
+
+test('personal snapshots label their scope and expose both Codex windows without changing company view',()=>{
+ const codex={windows:[{windowSeconds:18000,usedPercent:20,resetsAt:new Date(60000).toISOString()},{windowSeconds:604800,usedPercent:30,resetsAt:new Date(60000).toISOString()}]};
+ const company={...snapshot(0),codex};
+ assert.equal(windows(company).find(p=>p.key==='codex')?.windows.length,1);
+ const personal={...company,personal:true};
+ assert.equal(windows(personal).find(p=>p.key==='codex')?.windows.length,2);
+ assert(label(personal).startsWith('Мои лимиты'));
+ assert(!label(company).includes('Мои лимиты'));
+});
