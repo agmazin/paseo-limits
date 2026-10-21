@@ -28,7 +28,7 @@ test("windows, thresholds, freshness and expired reset", () => {
     },
   };
   assert.equal(windows(s).length, 1);
-  assert.equal(label(s), "Claude 27%");
+  assert.equal(label(s), "Claude 73% осталось");
   assert.equal(stale(s, 600000), false);
   assert.equal(stale(s, 600001), true);
   assert.deepEqual([69, 70, 89, 90].map(tone), ["", "warn", "warn", "bad"]);

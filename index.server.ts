@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { readLimits, refreshLimits, snapshotSchema } from "./shared/contracts";
 import { createService } from "./server/service";
+import { nativeReader } from "./server/paseo";
 const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
   const service = createService({
@@ -13,7 +14,7 @@ export default function contribute(server: PluginServerContext) {
       snapshotSchema.parse(
         JSON.parse(
           await readFile(
-            join(homedir(), ".multica", "usage-limits.json"),
+            process.env.PASEO_LIMITS_FILE || join(homedir(), ".multica", "usage-limits.json"),
             "utf8",
           ),
         ),
@@ -35,7 +36,15 @@ export default function contribute(server: PluginServerContext) {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     log: (message) => console.error(message),
   });
-  server.handle(readLimits, () => service.read());
-  server.handle(refreshLimits, () => service.refresh());
+  let readNative: ReturnType<typeof nativeReader> | undefined;
+  const read = async (_:unknown, {paseo}: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+    if (process.env.PASEO_LIMITS_SOURCE === "paseo" && !process.env.PASEO_LIMITS_FILE) {
+      readNative ??= nativeReader(() => paseo.providers.listUsage());
+      try { return await readNative(); } catch { return null; }
+    }
+    return service.read();
+  };
+  server.handle(readLimits, read);
+  server.handle(refreshLimits, process.env.PASEO_LIMITS_SOURCE === "paseo" || process.env.PASEO_LIMITS_FILE ? read : () => service.refresh());
   return () => {};
 }

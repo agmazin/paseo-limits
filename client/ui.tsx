@@ -20,6 +20,7 @@ export function Details({
           {busy ? "Обновление..." : "Обновить лимиты"}
         </Text>
       </Pressable>
+      {data?.testData && <Text style={{color:theme.colors.foregroundMuted}}>Тестовые данные</Text>}
       {windows(data).map((p) => (
         <View key={p.key} style={{ gap: 8 }}>
           <Text
@@ -68,7 +69,7 @@ export function Details({
                     fontSize: 13,
                   }}
                 >
-                  {w.usedPercent}%
+                  {100-w.usedPercent}% осталось
                 </Text>
               </View>
               <Text

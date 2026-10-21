@@ -232,7 +232,7 @@ export function mountRows(
           win.append(
             node("span", "window-name", windowName(w.windowSeconds, mode !== "full")),
             bar,
-            node("span", `pct ${tone(w.usedPercent)}`, `${w.usedPercent}%`),
+            node("span", `pct ${tone(w.usedPercent)}`, `${100-w.usedPercent}%`),
             node("span", "left", `· ${left(w.resetsAt, now)}`),
           );
           const show = () => {
@@ -263,6 +263,7 @@ export function mountRows(
         );
       if (!groups.length)
         row.append(node("span", "note", "Данные пока недоступны"));
+      if(data?.testData)row.append(node("span","note","Тестовые данные"));
       row.append(tip);
     };
     for (const mode of ["full", "medium", "narrow"] as const) {

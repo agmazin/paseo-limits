@@ -4,6 +4,7 @@ export interface LimitWindow {
   resetsAt: string;
 }
 export interface Snapshot {
+  testData?: boolean;
   claude?: { windows: LimitWindow[] };
   codex?: { windows: LimitWindow[] };
   fetchedAt: string;
@@ -58,8 +59,8 @@ export const label = (s: Snapshot | null) =>
   windows(s)
     .map(
       (p) =>
-        `${p.name} ${p.windows.map((w) => `${w.usedPercent}%`).join(" · ")}`,
+        `${p.name} ${p.windows.map((w) => `${100-w.usedPercent}% осталось`).join(" · ")}`,
     )
     .join(" | ") || "Лимиты недоступны";
 export const tooltip = (name: string, w: LimitWindow, now = Date.now()) =>
-  `${name}, ${windowName(w.windowSeconds)}: ${w.usedPercent}% использовано, сброс ${exact(w.resetsAt, now)}`;
+  `${name}, ${windowName(w.windowSeconds)}: ${100-w.usedPercent}% осталось, сброс ${exact(w.resetsAt, now)}`;

@@ -11,6 +11,7 @@ const provider = z.object({
   ),
 });
 export const snapshotSchema = z.object({
+  testData: z.boolean().optional(),
   claude: provider.optional(),
   codex: provider.optional(),
   fetchedAt: date,
