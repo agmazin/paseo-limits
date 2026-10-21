@@ -1,3 +1,7 @@
+import { useSettings } from "@getpaseo/plugin/client";
+import { displaySettings } from "./shared/settings";
+import { DisplaySettings } from "./client/settings";
+import { hideNativeUsage } from "./client/native-usage";
 import { useEffect } from "react";
 import type {
   PluginClientContext,
@@ -10,6 +14,7 @@ import { Details } from "./client/ui";
 import { mountRows } from "./client/web";
 import { label } from "./shared/model";
 export default function contribute(client: PluginClientContext) {
+  const removeSettings = client.addSettingsScreen({id:"display",title:"Лимиты",icon:"Gauge",Component:DisplaySettings});
   const state = createState(client);
   const pills = new Map<string, PluginButtonRegistration>();
   const lifetime = new AbortController();
@@ -26,6 +31,9 @@ export default function contribute(client: PluginClientContext) {
   };
   const unsubscribe = state.subscribe(update);
   function Bridge({ theme, layout }: PluginSidebarItemProps) {
+    const settings = useSettings(displaySettings);
+    const hidden = settings.status !== "ready" || settings.values.hideNativeUsage;
+    useEffect(() => hideNativeUsage(hidden), [hidden]);
     useEffect(
       () =>
         mountRows(state, theme, layout.compact, (value) => {
@@ -93,6 +101,7 @@ export default function contribute(client: PluginClientContext) {
   return () => {
     lifetime.abort();
     removeBridge();
+    removeSettings();
     clear();
     unsubscribe();
     state.dispose();

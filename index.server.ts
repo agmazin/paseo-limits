@@ -1,3 +1,4 @@
+import { displaySettings } from "./shared/settings";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
@@ -9,6 +10,7 @@ import { createService } from "./server/service";
 import { nativeReader } from "./server/paseo";
 const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
+  server.registerSettings(displaySettings);
   const service = createService({
     read: async () =>
       snapshotSchema.parse(
