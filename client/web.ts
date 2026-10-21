@@ -287,7 +287,10 @@ export function mountRows(
         }, 0);
       if (needed <= width + 0.5) break;
     }
-    align(root, row);
+    if(compact || data?.testData){
+      row.style.setProperty("margin-top","12px");
+      row.style.setProperty("margin-bottom","12px");
+    } else align(root, row);
   };
   const scan = () => {
     if (disposed) return;
