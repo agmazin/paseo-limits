@@ -1,7 +1,7 @@
 {
   "id": "paseo-limits",
   "name": "Лимиты",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "requirements": {
     "paseo": ">=0.12.0"
   }
