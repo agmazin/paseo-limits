@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { LimitsState } from "./state";
 import {
+  remaining,
   left,
   stale,
   tone,
@@ -236,7 +237,7 @@ export function mountRows(
           win.append(
             node("span", "window-name", windowName(w.windowSeconds, mode !== "full")),
             bar,
-            node("span", `pct ${tone(w.usedPercent)}`, `${100-w.usedPercent}%`),
+            node("span", `pct ${tone(w.usedPercent)}`, `${remaining(w.usedPercent)}%`),
             node("span", "left", `· ${left(w.resetsAt, now)}`),
           );
           const show = () => {

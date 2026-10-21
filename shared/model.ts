@@ -31,6 +31,7 @@ export function windows(s: Snapshot | null) {
       : [];
   });
 }
+export const remaining = (usedPercent:number) => Math.round((100-usedPercent)*100)/100;
 export const tone = (p: number) => (p >= 90 ? "bad" : p >= 70 ? "warn" : "");
 export const color = (p: number) =>
   p >= 90 ? "#d9534f" : p >= 70 ? "#c98a2e" : "#3f8f6a";
@@ -60,8 +61,8 @@ export const label = (s: Snapshot | null) =>
   (s?.personal ? "Мои лимиты · " : "") + windows(s)
     .map(
       (p) =>
-        `${p.name} ${p.windows.map((w) => `${100-w.usedPercent}% осталось`).join(" · ")}`,
+        `${p.name} ${p.windows.map((w) => `${remaining(w.usedPercent)}% осталось`).join(" · ")}`,
     )
     .join(" | ") || "Лимиты недоступны";
 export const tooltip = (name: string, w: LimitWindow, now = Date.now()) =>
-  `${name}, ${windowName(w.windowSeconds)}: ${100-w.usedPercent}% осталось, сброс ${exact(w.resetsAt, now)}`;
+  `${name}, ${windowName(w.windowSeconds)}: ${remaining(w.usedPercent)}% осталось, сброс ${exact(w.resetsAt, now)}`;

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginButtonContentProps } from "@getpaseo/plugin/client";
 import type { LimitsState } from "./state";
-import { color, exact, stale, windowName, windows } from "../shared/model";
+import { color, exact, stale, windowName, windows, remaining } from "../shared/model";
 export function Details({
   theme,
   state,
@@ -70,7 +70,7 @@ export function Details({
                     fontSize: 13,
                   }}
                 >
-                  {100-w.usedPercent}% осталось
+                  {remaining(w.usedPercent)}% осталось
                 </Text>
               </View>
               <Text
