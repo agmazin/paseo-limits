@@ -28,7 +28,7 @@ test("windows, thresholds, freshness and expired reset", () => {
     },
   };
   assert.equal(windows(s).length, 1);
-  assert.equal(label(s), "Claude 73% осталось");
+  assert.equal(label(s), "Claude 27% использовано");
   assert.equal(stale(s, 600000), false);
   assert.equal(stale(s, 600001), true);
   assert.deepEqual([69, 70, 89, 90].map(tone), ["", "warn", "warn", "bad"]);
@@ -122,6 +122,6 @@ test('personal snapshots label their scope and expose both Codex windows without
  assert.equal(windows(company).find(p=>p.key==='codex')?.windows.length,1);
  const personal={...company,personal:true};
  assert.equal(windows(personal).find(p=>p.key==='codex')?.windows.length,2);
- assert(label(personal).startsWith('Мои лимиты'));
+ assert.equal(label(personal), 'Мои лимиты · Claude 27% использовано | Codex 20% использовано · 30% использовано');
  assert(!label(company).includes('Мои лимиты'));
 });
