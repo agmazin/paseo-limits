@@ -139,7 +139,7 @@ export function mountRows(
     for (const el of row.querySelectorAll(
       ".lg-prov,.window-name,.pct,.left,.note",
     )) {
-      if (!el.textContent) continue;
+      if (!el.textContent || el.getBoundingClientRect().height === 0) continue;
       const range = document.createRange();
       range.selectNodeContents(el);
       const rect = range.getBoundingClientRect();
@@ -154,6 +154,7 @@ export function mountRows(
       : row.getBoundingClientRect();
   };
   const textGap = 12;
+  const spacing = (value: number) => Math.max(-textGap, Math.min(textGap, value));
   const align = (root: Element, row: Element) => {
     let pane: Element | null = root.parentElement;
     while (
@@ -173,11 +174,11 @@ export function mountRows(
       const style = getComputedStyle(row);
       row.style.setProperty(
         "margin-top",
-        `${(parseFloat(style.marginTop) || 0) + textGap - topGap}px`,
+        `${spacing((parseFloat(style.marginTop) || 0) + textGap - topGap)}px`,
       );
       row.style.setProperty(
         "margin-bottom",
-        `${(parseFloat(style.marginBottom) || 0) + textGap - bottomGap}px`,
+        `${spacing((parseFloat(style.marginBottom) || 0) + textGap - bottomGap)}px`,
       );
     }
   };
