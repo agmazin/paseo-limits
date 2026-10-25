@@ -6,12 +6,14 @@ import assert from 'node:assert/strict';
 const { _electron }=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE);
 const cli='/Users/agmazin/Library/Developer/paseo-cli012/node_modules/@getpaseo/cli/dist/index.js';
 const command=(...args)=>execFileSync('node',[cli,...args,'--host','127.0.0.1:6797'],{stdio:'pipe',timeout:20000});
-const source=process.env.LIMITS_SOURCE || resolve('.');
-const out=resolve('docs/shots/0.2.8');mkdirSync(out,{recursive:true});
-const report={pluginSource:source,host:'127.0.0.1:6797',client:'0.13.0',daemon:'0.12.0',checks:[]};
+const pluginSource=process.env.LIMITS_SOURCE || resolve('.');
+const out=resolve('docs/shots/0.2.9');mkdirSync(out,{recursive:true});
+const report={pluginSource,host:'127.0.0.1:6797',client:'0.13.0',daemon:'0.12.0',checks:[]};
 let electron;
 try {
- command('plugin','remove','paseo-limits');command('plugin','install',source);
+ const installed=JSON.parse(command('plugin','ls','--json').toString());
+ if(installed.some(item=>item.id==='paseo-limits'))command('plugin','remove','paseo-limits');
+ command('plugin','install',pluginSource);
  const catalog=JSON.parse(command('plugin','ls','--json').toString());for(const item of catalog)if(!item.enabled)command('plugin','enable',item.id);
  electron=await _electron.launch({executablePath:'/Users/agmazin/Library/Developer/paseo-tabs/desktop-test/runtime44/Electron.app/Contents/MacOS/Electron',args:[resolve('tests/browser/split-host.cjs')]});
  electron.process().stderr.on('data',data=>process.stderr.write(data));
@@ -77,5 +79,5 @@ try {
  report.drag=true;
  await check('drag-neighbour',2);
  await layout(3);await p.reload();await p.waitForSelector('[data-paseo-limits]');await check('reload-three',3);
- writeFileSync('docs/split-panes-0.2.8.json',JSON.stringify(report,null,2)+'\n');
+ writeFileSync('docs/split-panes-0.2.9.json',JSON.stringify(report,null,2)+'\n');
 } finally {await electron?.close();}
