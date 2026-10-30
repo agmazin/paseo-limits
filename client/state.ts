@@ -27,6 +27,10 @@ export function createState(client: PluginClientContext) {
     }
   }
   let reread:ReturnType<typeof setTimeout>|undefined;
+  const stopProviders = client.paseo.providers.subscribe(() => {
+    if (reread) clearTimeout(reread);
+    reread = setTimeout(() => void read(), 100);
+  });
   const stopAgents=client.paseo.agents.subscribe(update=>{
     if(!value.data?.personal||update.kind!=="upsert"||update.agent.status!=="idle")return;
     if(reread)clearTimeout(reread);
@@ -66,6 +70,7 @@ export function createState(client: PluginClientContext) {
     dispose() {
       alive = false;
       stopAgents();
+      stopProviders();
       if(reread)clearTimeout(reread);
       clearInterval(polling);
       clearInterval(ticking);

@@ -1,0 +1,24 @@
+{
+  "tag": "v0.2.9",
+  "releaseCommit": "4d03eee",
+  "mainRuntimeStatus": "running",
+  "mainRuntimeSource": "/Users/agmazin/Library/Developer/paseo-releases/paseo-limits",
+  "desktopChecks": [
+    "1952-1-panes",
+    "1952-2-panes",
+    "1952-3-panes",
+    "1440-1-panes",
+    "1440-2-panes",
+    "1440-3-panes",
+    "1100-1-panes",
+    "1100-2-panes",
+    "1100-3-panes",
+    "drag-neighbour",
+    "reload-three"
+  ],
+  "desktopPluginSource": "/Users/agmazin/Library/Developer/paseo-releases/paseo-limits",
+  "client": "0.13.0",
+  "daemon": "0.12.0",
+  "testHost": "127.0.0.1:6797",
+  "drag": true
+}
