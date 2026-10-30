@@ -10,6 +10,7 @@ import { readLimits, refreshLimits, snapshotSchema } from "./shared/contracts";
 import { createService } from "./server/service";
 import { demoSnapshot } from "./server/demo";
 import { nativeReader } from "./server/paseo";
+import { createVisibility } from "./server/visibility";
 const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
   server.registerSettings(displaySettings);
@@ -42,6 +43,7 @@ export default function contribute(server: PluginServerContext) {
   });
   let readNative: ReturnType<typeof nativeReader> | undefined;
   let context: Parameters<Parameters<typeof server.handle>[1]>[1] | undefined;
+  let visibility: ReturnType<typeof createVisibility> | undefined;
   const readSource = async (_:unknown, {paseo}: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
     if (process.env.PASEO_LIMITS_SOURCE === "paseo" && !process.env.PASEO_LIMITS_FILE) {
       readNative ??= nativeReader(() => paseo.providers.listUsage());
@@ -49,9 +51,13 @@ export default function contribute(server: PluginServerContext) {
     }
     return service.read();
   };
-  const read = async (input:unknown, next: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+  const read = async (input:unknown, next: Parameters<Parameters<typeof server.handle>[1]>[1], refresh = false) => {
     context=next;
-    const snapshot=demoSnapshot(await readSource(input,next),process.env.PASEO_LIMITS_DEMO_RENEW==="true");
+    const source = refresh && !process.env.PASEO_LIMITS_FILE && process.env.PASEO_LIMITS_SOURCE !== "paseo"
+      ? await service.refresh()
+      : await readSource(input,next);
+    visibility ??= createVisibility(() => next.paseo.config.get(), (message) => console.error(message));
+    const snapshot=await visibility(demoSnapshot(source,process.env.PASEO_LIMITS_DEMO_RENEW==="true"));
     const file=process.env.PASEO_LIMITS_EXPORT_FILE;
     if(file && snapshot){
       await writeFile(file+".new",JSON.stringify(snapshot),{mode:0o600});
@@ -61,12 +67,15 @@ export default function contribute(server: PluginServerContext) {
     return snapshot;
   };
   let pending:Promise<unknown>|undefined;
-  const serializedRead = (input:unknown,next: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
+  const serializedRead = (input:unknown,next: Parameters<Parameters<typeof server.handle>[1]>[1], refresh = false) => {
     if(pending)return pending as ReturnType<typeof read>;
-    const task=read(input,next).finally(()=>{pending=undefined;});pending=task;return task;
+    const task=read(input,next,refresh).finally(()=>{pending=undefined;});pending=task;return task;
   };
   const timer=process.env.PASEO_LIMITS_EXPORT_FILE?setInterval(()=>{if(context)void serializedRead({},context).catch(()=>console.error("Не удалось обновить серверный снимок лимитов"));},60000):undefined;
   server.handle(readLimits, serializedRead);
-  server.handle(refreshLimits, process.env.PASEO_LIMITS_SOURCE === "paseo" || process.env.PASEO_LIMITS_FILE ? serializedRead : () => service.refresh());
+  server.handle(refreshLimits, async (input, next) => {
+    if (pending) await pending;
+    return serializedRead(input, next, true);
+  });
   return () => {if(timer)clearInterval(timer);};
 }

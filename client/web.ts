@@ -189,6 +189,12 @@ export function mountRows(
     row.style.setProperty("width", `${width}px`);
     row.style.setProperty("min-width", `${width}px`);
     const groups = windows(data);
+    if (!groups.length) {
+      row.style.setProperty("display", "none");
+      row.innerHTML = "";
+      return;
+    }
+    row.style.setProperty("display", "");
     const old = stale(data, now);
     // Foreground blends follow the active host theme, including light themes.
     row.style.setProperty("--pl-fg", theme.colors.foreground);

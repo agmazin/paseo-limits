@@ -2,7 +2,7 @@ const { app, BrowserWindow, protocol, net, ipcMain } = require('electron');
 const { readFileSync } = require('node:fs');
 const { join, extname } = require('node:path');
 const { pathToFileURL } = require('node:url');
-app.setPath('userData', '/Users/agmazin/Library/Developer/paseo-tabs/desktop-test/split-profile');
+app.setPath('userData', process.env.LIMITS_TEST_PROFILE || '/Users/agmazin/Library/Developer/paseo-tabs/desktop-test/split-profile');
 protocol.registerSchemesAsPrivileged([{ scheme:'paseo', privileges:{standard:true,secure:true,supportFetchAPI:true} }]);
 app.whenReady().then(async()=>{
  app.dock?.hide();
@@ -12,9 +12,9 @@ app.whenReady().then(async()=>{
  });
  for (const name of ['paseo:browser:set-shortcut-policy','paseo:browser:set-workspace-active-browser','paseo:editor:listTargets','paseo:get-pending-open-project','paseo:agent-navigation:ready','paseo:window:updateChrome','paseo:window:setBadgeCount','paseo:window:isMaximized','paseo:window:isFullscreen','paseo:menu:set-capturing-shortcut']) ipcMain.handle(name,()=>null);
  ipcMain.handle('paseo:invoke',(_event,command,args)=>{
-  const home='/Users/agmazin/Library/Developer/paseo-tabs/split-home';
+  const home=process.env.LIMITS_TEST_HOME || '/Users/agmazin/Library/Developer/paseo-tabs/split-home';
   const pid=JSON.parse(readFileSync(home+'/paseo.pid'));
-  if(pid.listen!=='127.0.0.1:6797')throw new Error('Unexpected test daemon');
+  if(pid.listen!==(process.env.LIMITS_TEST_HOST || '127.0.0.1:6797'))throw new Error('Unexpected test daemon');
   if (command==='desktop_daemon_status'||command==='start_desktop_daemon') return {...pid,status:'running',home,version:'0.12.0',desktopManaged:true,ownedByDesktop:true};
   if(command==='desktop_local_credential')return readFileSync(home+'/local-credential','utf8').trim();
   if(command==='get_local_daemon_version')return '0.12.0';

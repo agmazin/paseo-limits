@@ -1,7 +1,7 @@
 {
   "name": "paseo-limits",
   "private": true,
-  "version": "0.2.9",
+  "version": "0.2.10",
   "files": [
     "paseo-plugin.json",
     "OVERVIEW.md",
@@ -25,7 +25,8 @@
     "react-native": "0.81.5",
     "typescript": "^5.9.3",
     "zod": "^4.4.3",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "ws": "8.22.0"
   },
   "type": "module"
 }

@@ -12,7 +12,7 @@ import type {
 import { createState } from "./client/state";
 import { Details } from "./client/ui";
 import { mountRows } from "./client/web";
-import { label } from "./shared/model";
+import { label, windows } from "./shared/model";
 export default function contribute(client: PluginClientContext) {
   const removeSettings = client.addSettingsScreen({id:"display",title:"Лимиты",icon:"Gauge",Component:DisplaySettings});
   const state = createState(client);
@@ -26,7 +26,7 @@ export default function contribute(client: PluginClientContext) {
     for (const [id, pill] of pills)
       pill.update({
         label: label(state.get().data),
-        visible: !available.has("*") && !available.has(id),
+        visible: windows(state.get().data).length > 0 && !available.has("*") && !available.has(id),
       });
   };
   const unsubscribe = state.subscribe(update);
@@ -64,7 +64,7 @@ export default function contribute(client: PluginClientContext) {
           title: "Лимиты подписок",
           label: label(state.get().data),
           icon: "Gauge",
-          visible: !available.has("*") && !available.has(agent.id),
+          visible: windows(state.get().data).length > 0 && !available.has("*") && !available.has(agent.id),
           behavior: { kind: "popover", Content },
         },
       }),
