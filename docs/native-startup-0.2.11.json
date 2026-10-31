@@ -1,0 +1,53 @@
+{
+  "scope": "Actual compiler bundle, upstream 0.13.2 PluginButtonStore, Mac V8 VM, Android branch, no DOM, RN UI stubs, real setTimeout tasks. No phone FPS/render measurements.",
+  "reports": [
+    {
+      "name": "before",
+      "initialAdds": 96,
+      "maxAddsPerTask": 96,
+      "startupPublishes": 192,
+      "startupUpdates": 96,
+      "unchangedTickUpdates": 96,
+      "unchangedReadUpdates": 96,
+      "repeatAdds": 96,
+      "adds": 192,
+      "removes": 192
+    },
+    {
+      "name": "after",
+      "initialAdds": 0,
+      "maxAddsPerTask": 4,
+      "startupPublishes": 96,
+      "startupUpdates": 0,
+      "unchangedTickUpdates": 0,
+      "unchangedReadUpdates": 0,
+      "repeatAdds": 0,
+      "adds": 96,
+      "removes": 96
+    },
+    {
+      "name": "before-dispose",
+      "disposeAt": "before",
+      "adds": 0,
+      "removes": 0
+    },
+    {
+      "name": "midway-dispose",
+      "disposeAt": "midway",
+      "adds": 4,
+      "removes": 4
+    },
+    {
+      "name": "reconnect",
+      "initialAdds": 0,
+      "maxAddsPerTask": 4,
+      "startupPublishes": 96,
+      "startupUpdates": 0,
+      "unchangedTickUpdates": 0,
+      "unchangedReadUpdates": 0,
+      "repeatAdds": 0,
+      "adds": 96,
+      "removes": 96
+    }
+  ]
+}
