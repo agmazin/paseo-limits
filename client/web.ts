@@ -107,6 +107,7 @@ const windowCss = `
 body:has([data-paseo-limits-bar]) #root{height:calc(100% - 32px) !important}
 .pl-window-bar{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;padding:0 12px;box-sizing:border-box;z-index:20;background:var(--pl-bar-bg,transparent);border-top:1px solid var(--pl-bar-border,transparent)}
 .pl-window-bar .pl-limits{margin:0;width:auto !important;min-width:0 !important;flex:1}
+.pl-window-bar .pl-limits.personal-data,.pl-window-bar .pl-limits.demo-data,.pl-window-bar .pl-limits.stale{height:auto;flex-wrap:nowrap}.pl-window-bar .pl-limits .note{flex-basis:auto;margin:0 0 0 auto;text-align:right}
 `;
 const icon =
   '<svg class="ico" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>';
