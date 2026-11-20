@@ -279,10 +279,7 @@ export function mountRows(
         win.setAttribute("tabindex", "0");
         const text = balanceTooltip(deepseek);
         win.setAttribute("aria-label", text);
-        win.append(
-          node("span", "window-name", mode === "full" ? "баланс" : "бал"),
-          node("span", `pct ${balanceTone(deepseek)}`, balanceText(deepseek)),
-        );
+        win.append(node("span", `pct ${balanceTone(deepseek)}`, balanceText(deepseek)));
         const show = () => {
           tip.textContent = text;
           tip.className = "tip show";

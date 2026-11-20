@@ -86,7 +86,7 @@ export function Details({
         <View style={{ gap: 5 }}>
           <Text style={{ color: theme.colors.foreground, fontSize: 13, fontWeight: "500" }}>DeepSeek</Text>
           <Text style={{ color: data.deepseek.balance < 0.5 ? color(data.deepseek.balance < 0.1 ? 95 : 75) : theme.colors.foreground, fontSize: 13 }}>
-            Баланс {balanceText(data.deepseek)}
+            {balanceText(data.deepseek)}
           </Text>
           <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>{balanceTooltip(data.deepseek)}</Text>
         </View>

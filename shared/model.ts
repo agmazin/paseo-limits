@@ -51,8 +51,11 @@ export const color = (p: number) =>
   p >= 90 ? "#d9534f" : p >= 70 ? "#c98a2e" : "#3f8f6a";
 export const stale = (s: Snapshot | null, now = Date.now()) =>
   !s || now - Date.parse(s.fetchedAt) > 600000;
+// Shown as a label: capitalised, abbreviations end with a dot.
 export const windowName = (s: number, narrow = false) =>
-  s === 18000 ? (narrow ? "5ч" : "сессия") : narrow ? "нед" : "неделя";
+  s === 18000 ? (narrow ? "5 ч" : "Сессия") : narrow ? "Нед." : "Неделя";
+// The same window inside a sentence.
+const windowWord = (s: number) => (s === 18000 ? "сессия" : "неделя");
 export function left(iso: string, now = Date.now()) {
   let m = Math.max(0, Math.round((Date.parse(iso) - now) / 60000));
   const d = Math.floor(m / 1440);
@@ -80,4 +83,4 @@ export const label = (s: Snapshot | null) =>
     ...(s?.deepseek ? [`DeepSeek ${balanceText(s.deepseek)}`] : []),
   ].join(" | ") || "Лимиты недоступны";
 export const tooltip = (name: string, w: LimitWindow, now = Date.now()) =>
-  `${name}, ${windowName(w.windowSeconds)}: ${w.usedPercent}% использовано, сброс ${exact(w.resetsAt, now)}`;
+  `${name}, ${windowWord(w.windowSeconds)}: ${w.usedPercent}% использовано, сброс ${exact(w.resetsAt, now)}`;
