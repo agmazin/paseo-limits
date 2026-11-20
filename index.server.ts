@@ -11,6 +11,7 @@ import { createService } from "./server/service";
 import { demoSnapshot } from "./server/demo";
 import { nativeReader } from "./server/paseo";
 import { createVisibility } from "./server/visibility";
+import { deepseekReader } from "./server/deepseek";
 const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
   server.registerSettings(displaySettings);
@@ -41,6 +42,25 @@ export default function contribute(server: PluginServerContext) {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     log: (message) => console.error(message),
   });
+  const dshHome = process.env.PASEO_DEEPSEEK_DSH_HOME || join(homedir(), ".dsh");
+  const readDeepseek = deepseekReader(
+    () => readFile(join(dshHome, ".credentials.yaml"), "utf8"),
+    async (token) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch("https://platform.deepseek.com/api/v0/users/get_user_summary", {
+          headers: { "x-dsh-auth-token": token },
+          redirect: "error",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw Error("DeepSeek balance unavailable");
+        return response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  );
   let readNative: ReturnType<typeof nativeReader> | undefined;
   let context: Parameters<Parameters<typeof server.handle>[1]>[1] | undefined;
   let visibility: ReturnType<typeof createVisibility> | undefined;
@@ -57,7 +77,9 @@ export default function contribute(server: PluginServerContext) {
       ? await service.refresh()
       : await readSource(input,next);
     visibility ??= createVisibility(() => next.paseo.config.get(), (message) => console.error(message));
-    const snapshot=await visibility(demoSnapshot(source,process.env.PASEO_LIMITS_DEMO_RENEW==="true"));
+    const deepseek = await readDeepseek();
+    const withBalance = deepseek ? { ...(source ?? { fetchedAt: new Date().toISOString() }), deepseek } : source;
+    const snapshot=await visibility(demoSnapshot(withBalance,process.env.PASEO_LIMITS_DEMO_RENEW==="true"));
     const file=process.env.PASEO_LIMITS_EXPORT_FILE;
     if(file && snapshot){
       await writeFile(file+".new",JSON.stringify(snapshot),{mode:0o600});

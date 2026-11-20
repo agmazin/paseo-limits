@@ -17,7 +17,7 @@ export function createVisibility(
     }
     if (!snapshot) return null;
     const visible = { ...snapshot };
-    for (const key of ["claude", "codex"] as const) {
+    for (const key of ["claude", "codex", "deepseek"] as const) {
       if (providers[key]?.enabled === false) delete visible[key];
     }
     return visible;
