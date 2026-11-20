@@ -10,5 +10,9 @@ export function DisplaySettings({ theme }: PluginSurfaceProps) {
     value={settings.values.hideNativeUsage} disabled={settings.saving}
     onValueChange={hideNativeUsage => { void settings.save({...settings.values, hideNativeUsage}, settings.revision); }}
     error={settings.saveError ? "Не удалось сохранить настройку" : undefined}
+  /><SettingsSwitch
+    label="Одна полоса внизу окна вместо строки под каждым чатом"
+    value={settings.values.placement === "window"} disabled={settings.saving}
+    onValueChange={on => { void settings.save({...settings.values, placement: on ? "window" : "composer"}, settings.revision); }}
   /></SettingsCard></SettingsSection>;
 }
