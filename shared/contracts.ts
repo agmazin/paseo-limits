@@ -15,6 +15,13 @@ export const snapshotSchema = z.object({
   personal: z.boolean().optional(),
   claude: provider.optional(),
   codex: provider.optional(),
+  deepseek: z
+    .object({
+      currency: z.enum(["USD", "CNY"]),
+      balance: z.number().finite(),
+      spent: z.number().finite().nonnegative().optional(),
+    })
+    .optional(),
   fetchedAt: date,
 });
 export const readLimits = defineRpc({

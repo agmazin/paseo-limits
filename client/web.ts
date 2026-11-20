@@ -1,8 +1,11 @@
-import { providerPaths } from "./provider-paths";
+import { providerPaths, providerViewBox } from "./provider-paths";
 import { Platform } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { LimitsState } from "./state";
 import {
+  balanceText,
+  balanceTone,
+  balanceTooltip,
   left,
   stale,
   tone,
@@ -189,7 +192,8 @@ export function mountRows(
     row.style.setProperty("width", `${width}px`);
     row.style.setProperty("min-width", `${width}px`);
     const groups = windows(data);
-    if (!groups.length) {
+    const deepseek = data?.deepseek;
+    if (!groups.length && !deepseek) {
       row.style.setProperty("display", "none");
       row.innerHTML = "";
       return;
@@ -264,6 +268,38 @@ export function mountRows(
           row.append(win);
         });
       });
+      if (deepseek) {
+        if (groups.length) row.append(node("span", "vsep"));
+        const provider = node("span", "lg-prov");
+        provider.setAttribute("title", "DeepSeek");
+        provider.setAttribute("aria-label", "DeepSeek");
+        provider.innerHTML = `<svg class="logo" viewBox="${providerViewBox.deepseek}" aria-hidden="true" fill-rule="evenodd"><path d="${providerPaths.deepseek}"/></svg>`;
+        row.append(provider);
+        const win = node("span", "win");
+        win.setAttribute("tabindex", "0");
+        const text = balanceTooltip(deepseek);
+        win.setAttribute("aria-label", text);
+        win.append(
+          node("span", "window-name", mode === "full" ? "баланс" : "бал"),
+          node("span", `pct ${balanceTone(deepseek)}`, balanceText(deepseek)),
+        );
+        const show = () => {
+          tip.textContent = text;
+          tip.className = "tip show";
+          tip.style.setProperty(
+            "left",
+            `${Math.max(0, Math.min(win.getBoundingClientRect().left - row.getBoundingClientRect().left - 6, row.clientWidth - tip.getBoundingClientRect().width))}px`,
+          );
+        };
+        const hide = () => {
+          tip.className = "tip";
+        };
+        win.addEventListener("mouseenter", show);
+        win.addEventListener("mouseleave", hide);
+        win.addEventListener("focus", show);
+        win.addEventListener("blur", hide);
+        row.append(win);
+      }
       if (data && old && !data.testData && !data.personal)
         row.append(
           node(
@@ -272,7 +308,7 @@ export function mountRows(
             `данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
           ),
         );
-      if (!groups.length)
+      if (!groups.length && !deepseek)
         row.append(node("span", "note", "Данные пока недоступны"));
       if(data?.personal&&!data.testData)row.append(node("span","note personal","Мои лимиты"+(old ? ` · данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "")));
       if(data?.testData)row.append(node("span","note demo",(data.personal ? "Мои лимиты · " : "") + (old ? `Тестовые данные от ${new Date(data.fetchedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}` : "Тестовые данные")));

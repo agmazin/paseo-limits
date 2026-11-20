@@ -14,7 +14,7 @@ export function createPills(client: PluginClientContext, state: LimitsState, Con
   let available = new Set<string>();
   const descriptor = (id: string) => ({
     label: label(state.get().data),
-    visible: windows(state.get().data).length > 0 && !available.has("*") && !available.has(id),
+    visible: (windows(state.get().data).length > 0 || !!state.get().data?.deepseek) && !available.has("*") && !available.has(id),
   });
   const signature = (button: ReturnType<typeof descriptor>) => JSON.stringify(button);
   const remove = (id: string) => {

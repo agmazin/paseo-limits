@@ -8,8 +8,23 @@ export interface Snapshot {
   personal?: boolean;
   claude?: { windows: LimitWindow[] };
   codex?: { windows: LimitWindow[] };
+  // DeepSeek sells no subscription windows: the company account balance is shown instead.
+  deepseek?: DeepseekBalance;
   fetchedAt: string;
 }
+export interface DeepseekBalance {
+  currency: "USD" | "CNY";
+  balance: number;
+  spent?: number;
+}
+const money = (v: number) => v.toFixed(2).replace(".", ",");
+export const balanceText = (b: DeepseekBalance) =>
+  b.currency === "USD" ? `$${money(b.balance)}` : `${money(b.balance)} юаней`;
+export const balanceTone = (b: DeepseekBalance) =>
+  b.balance < 0.1 ? "bad" : b.balance < 0.5 ? "warn" : "";
+export const balanceTooltip = (b: DeepseekBalance) =>
+  `DeepSeek: на балансе ${money(b.balance)} ${b.currency === "USD" ? "долларов" : "юаней"}` +
+  (b.spent !== undefined ? `, потрачено ${money(b.spent)}` : "");
 export function windows(s: Snapshot | null) {
   return (["claude", "codex"] as const).flatMap((key) => {
     const list =
@@ -57,11 +72,12 @@ export function exact(iso: string, now = Date.now()) {
     : `${["вс", "пн", "вт", "ср", "чт", "пт", "сб"][d.getDay()]} ${d.getDate()} ${["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][d.getMonth()]} в ${hm}`;
 }
 export const label = (s: Snapshot | null) =>
-  (s?.personal ? "Мои лимиты · " : "") + windows(s)
-    .map(
+  (s?.personal ? "Мои лимиты · " : "") + [
+    ...windows(s).map(
       (p) =>
         `${p.name} ${p.windows.map((w) => `${w.usedPercent}% использовано`).join(" · ")}`,
-    )
-    .join(" | ") || "Лимиты недоступны";
+    ),
+    ...(s?.deepseek ? [`DeepSeek ${balanceText(s.deepseek)}`] : []),
+  ].join(" | ") || "Лимиты недоступны";
 export const tooltip = (name: string, w: LimitWindow, now = Date.now()) =>
   `${name}, ${windowName(w.windowSeconds)}: ${w.usedPercent}% использовано, сброс ${exact(w.resetsAt, now)}`;

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginButtonContentProps } from "@getpaseo/plugin/client";
 import type { LimitsState } from "./state";
-import { color, exact, stale, windowName, windows } from "../shared/model";
+import { balanceText, balanceTooltip, color, exact, stale, windowName, windows } from "../shared/model";
 export function Details({
   theme,
   state,
@@ -82,7 +82,16 @@ export function Details({
           ))}
         </View>
       ))}
-      {!windows(data).length && (
+      {data?.deepseek && (
+        <View style={{ gap: 5 }}>
+          <Text style={{ color: theme.colors.foreground, fontSize: 13, fontWeight: "500" }}>DeepSeek</Text>
+          <Text style={{ color: data.deepseek.balance < 0.5 ? color(data.deepseek.balance < 0.1 ? 95 : 75) : theme.colors.foreground, fontSize: 13 }}>
+            Баланс {balanceText(data.deepseek)}
+          </Text>
+          <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>{balanceTooltip(data.deepseek)}</Text>
+        </View>
+      )}
+      {!windows(data).length && !data?.deepseek && (
         <Text style={{ color: theme.colors.foregroundMuted }}>
           Данные пока недоступны
         </Text>
