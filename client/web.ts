@@ -102,6 +102,12 @@ const css = `
 .pl-limits .tip{position:absolute;bottom:22px;left:0;background:var(--pl-raised);border:1px solid var(--pl-border);border-radius:9px;padding:8px 11px;font-size:12.5px;color:var(--pl-fg);white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;pointer-events:none;z-index:5;line-height:1.35}
 .pl-limits .tip.show{opacity:1;transform:none}
 `;
+// The bar takes the bottom edge of the window: the app above it is shortened by the same height.
+const windowCss = `
+body:has([data-paseo-limits-bar]) #root{height:calc(100% - 32px) !important}
+.pl-window-bar{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;padding:0 12px;box-sizing:border-box;z-index:20;background:var(--pl-bar-bg,transparent);border-top:1px solid var(--pl-bar-border,transparent)}
+.pl-window-bar .pl-limits{margin:0;width:auto !important;min-width:0 !important;flex:1}
+`;
 const icon =
   '<svg class="ico" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>';
 function node(tag: string, cls: string, text?: string) {
@@ -115,10 +121,19 @@ export function mountRows(
   theme: PluginTheme,
   compact: boolean,
   onAvailability: (agents: Set<string>) => void,
+  placement: "window" | "composer" = "window",
 ) {
   if (Platform.OS !== "web") return () => {};
+  // One bar along the bottom edge of the whole window; a compact screen keeps the per-chat pill.
+  const windowBar = placement === "window" && !compact;
+  let bar: Element | null = null;
+  if (windowBar) {
+    bar = node("div", "pl-window-bar");
+    bar.setAttribute("data-paseo-limits-bar", "");
+    document.body.append(bar);
+  }
   const style = node("style", "");
-  style.textContent = css;
+  style.textContent = css + (windowBar ? windowCss : "");
   document.head.append(style);
   const rows = new Map<Element, Element>();
   let disposed = false;
@@ -212,6 +227,10 @@ export function mountRows(
       `color-mix(in srgb, ${theme.colors.foreground} 69%, ${theme.colors.foregroundMuted})`,
     );
     row.style.setProperty("--pl-raised", theme.colors.surface1);
+    if (bar) {
+      bar.style.setProperty("--pl-bar-bg", theme.colors.surface0);
+      bar.style.setProperty("--pl-bar-border", theme.colors.border);
+    }
     row.style.setProperty("--pl-border", theme.colors.border);
     const draw = (mode: "full" | "medium" | "narrow") => {
       row.className = `pl-limits ${mode}${old ? " stale" : ""}${data?.testData ? " demo-data" : ""}${data?.personal ? " personal-data" : ""}`;
@@ -330,14 +349,19 @@ export function mountRows(
         }, 0);
       if (needed <= width + 0.5) break;
     }
-    if(compact || data?.testData || data?.personal){
+    if(windowBar){
+      row.style.setProperty("margin-top","0");
+      row.style.setProperty("margin-bottom","0");
+    } else if(compact || data?.testData || data?.personal){
       row.style.setProperty("margin-top","12px");
       row.style.setProperty("margin-bottom","12px");
     } else align(root, row);
   };
   const scan = () => {
     if (disposed) return;
-    const roots = [
+    const roots = bar
+      ? [bar]
+      : [
           ...document.querySelectorAll('[data-testid="message-input-root"]'),
         ].filter((r) => r.getBoundingClientRect().width > 0);
     for (const [root, row] of rows)
@@ -351,7 +375,8 @@ export function mountRows(
       if (!row) {
         row = node("div", "pl-limits");
         row.setAttribute("data-paseo-limits", "");
-        root.after(row);
+        if (root === bar) root.append(row);
+        else root.after(row);
         rows.set(root, row);
         resize.observe(root);
         render(root, row);
@@ -374,7 +399,7 @@ export function mountRows(
         break;
       }
     }
-    if(compact && rows.size)agents.add("*");
+    if((compact || bar) && rows.size)agents.add("*");
     onAvailability(agents);
   };
   const schedule = () => {
@@ -418,6 +443,7 @@ export function mountRows(
     unsubscribe();
     window.removeEventListener("resize", schedule);
     for (const row of rows.values()) row.remove();
+    bar?.remove();
     style.remove();
     onAvailability(new Set());
   };

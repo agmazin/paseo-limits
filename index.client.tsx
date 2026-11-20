@@ -24,10 +24,11 @@ export default function contribute(client: PluginClientContext) {
     const settings = useSettings(displaySettings);
     const hidden = settings.status !== "ready" || settings.values.hideNativeUsage;
     useEffect(() => hideNativeUsage(hidden), [hidden]);
+    const placement = settings.status === "ready" ? settings.values.placement : "window";
     useEffect(
       () =>
-        mountRows(state, theme, layout.compact, pills.available),
-      [theme, layout.compact],
+        mountRows(state, theme, layout.compact, pills.available, placement),
+      [theme, layout.compact, placement],
     );
     return null;
   }
