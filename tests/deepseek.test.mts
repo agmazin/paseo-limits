@@ -52,3 +52,12 @@ test("reader caches for a minute, keeps the last balance on failure, hides witho
   clock = 122000; creds = "version: 1\n";
   assert.equal(await read(), null, "signed out: not shown");
 });
+
+test("window labels are capitalised words or dotted abbreviations; sentences keep lowercase", async () => {
+  const { windowName, tooltip } = await import("../shared/model.ts");
+  assert.equal(windowName(604800), "Неделя");
+  assert.equal(windowName(604800, true), "Нед.");
+  assert.equal(windowName(18000), "Сессия");
+  assert.equal(windowName(18000, true), "5 ч");
+  assert.match(tooltip("Codex", { windowSeconds: 604800, usedPercent: 5, resetsAt: new Date(Date.now() + 3600000).toISOString() }), /^Codex, неделя: 5% использовано/);
+});
