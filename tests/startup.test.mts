@@ -133,3 +133,56 @@ test("late successful refresh cannot publish after dispose and debounced callbac
   assert.equal(state.get().data?.fetchedAt, snapshot.fetchedAt);
   assert.equal(emissions, 0); assert.equal(calls, 2);
 });
+
+test("local reads and refresh still run when the shared query manager considers the network offline", async t => {
+  const { onlineManager } = await import("@tanstack/react-query");
+  const online = onlineManager.isOnline();
+  t.after(() => onlineManager.setOnline(online));
+  onlineManager.setOnline(false);
+  const calls: string[] = [];
+  const subscribe = () => () => {};
+  const state = createState({
+    rpc: async (contract: { name: string }) => { calls.push(contract.name); return snapshot; },
+    paseo: { agents: { subscribe }, providers: { subscribe } },
+  } as never);
+  t.after(state.dispose);
+  await flush();
+  assert.deepEqual(calls, ["limits.read"]);
+  const refresh = state.refresh();
+  await flush();
+  assert.deepEqual(calls, ["limits.read", "limits.refresh"]);
+  assert.equal(state.get().busy, false);
+  assert.deepEqual(state.get().data, snapshot);
+  await refresh;
+});
+
+test("lost read and refresh replies release the button, polling and late replies cannot overwrite a retry", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+  t.mock.method(console, "error", () => {});
+  const calls: { name: string; resolve: (value: unknown) => void }[] = [];
+  const subscribe = () => () => {};
+  const state = createState({
+    rpc: (contract: { name: string }) => new Promise(resolve => calls.push({ name: contract.name, resolve })),
+    paseo: { agents: { subscribe }, providers: { subscribe } },
+  } as never);
+  t.after(state.dispose);
+  const lost = state.refresh();
+  assert.equal(state.get().busy, true);
+  t.mock.timers.tick(8000);
+  await flush();
+  assert.deepEqual(calls.map(call => call.name), ["limits.read", "limits.refresh"]);
+  t.mock.timers.tick(15000);
+  await lost;
+  assert.equal(state.get().busy, false);
+  const retry = state.refresh();
+  calls[2].resolve(snapshot);
+  await retry;
+  for (const call of calls.slice(0, 2)) call.resolve(null);
+  await flush();
+  assert.deepEqual(state.get().data, snapshot);
+  t.mock.timers.tick(60_000);
+  assert.equal(calls[3].name, "limits.read");
+  calls[3].resolve({ ...snapshot, personal: false });
+  await flush();
+  assert.equal(state.get().data?.personal, false);
+});

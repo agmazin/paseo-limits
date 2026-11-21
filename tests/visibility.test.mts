@@ -57,6 +57,7 @@ test("real read and refresh handlers filter file, cached broken file, native cac
   const dir = await mkdtemp(join(tmpdir(), "limits-visibility-"));
   const saved = { ...process.env };
   try {
+    process.env.PASEO_DEEPSEEK_DSH_HOME = dir;
     for (const mode of ["file", "paseo"]) {
       const file = join(dir, mode + ".json");
       const output = join(dir, mode + "-export.json");
@@ -128,4 +129,45 @@ test("provider catalog update rereads shared inline/pill state and disposal rele
     state.dispose();
   }
   assert.equal(stopped, 2);
+});
+
+test("a stalled DeepSeek response body releases the shared server read and leaves healthy limits usable", { timeout: 9000 }, async t => {
+  const dir = await mkdtemp(join(tmpdir(), "limits-stalled-body-"));
+  const saved = { ...process.env };
+  const file = join(dir, "limits.json");
+  const handlers = new Map<string, Function>();
+  const context = { paseo: { config: { get: async () => ({ config: { providers: {} } }) } } };
+  let bodyAborted = false;
+  t.mock.method(globalThis, "fetch", async (_url: string, options: { signal: AbortSignal }) => ({
+    ok: true,
+    json: () => new Promise((_, reject) => options.signal.addEventListener("abort", () => {
+      bodyAborted = true;
+      reject(Error("aborted"));
+    }, { once: true })),
+  }));
+  try {
+    process.env.PASEO_DEEPSEEK_DSH_HOME = dir;
+    process.env.PASEO_LIMITS_FILE = file;
+    delete process.env.PASEO_LIMITS_EXPORT_FILE;
+    await writeFile(join(dir, ".credentials.yaml"), "  deepseek-account-platform/default:\n    token: fixture\n");
+    await writeFile(file, JSON.stringify({ ...snapshot, claude: { ...provider, error: "http_429" } }));
+    const cleanup = contribute({ registerSettings() {}, handle(contract: { name: string }, handler: Function) {
+      handlers.set(contract.name, handler);
+    } } as never);
+    try {
+      const partial = await handlers.get("limits.read")!({}, context);
+      assert.equal(bodyAborted, true);
+      assert.deepEqual(partial.codex, provider);
+      assert.deepEqual(partial.claude, { windows: [], unavailable: true });
+      assert.equal(partial.deepseek, undefined);
+      await writeFile(file, JSON.stringify(snapshot));
+      const recovered = await handlers.get("limits.refresh")!({}, context);
+      assert.deepEqual(recovered.claude, provider);
+    } finally {
+      await cleanup?.();
+    }
+  } finally {
+    process.env = saved;
+    await rm(dir, { recursive: true, force: true });
+  }
 });

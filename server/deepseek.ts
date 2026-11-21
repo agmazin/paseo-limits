@@ -29,15 +29,20 @@ export function deepseekReader(
   now = Date.now,
 ) {
   let last = -Infinity;
-  let cached: DeepseekBalance | null = null;
-  let pending: Promise<DeepseekBalance | null> | undefined;
+  type DatedBalance = DeepseekBalance & { fetchedAt: string };
+  let cached: DatedBalance | null = null;
+  let pending: Promise<DatedBalance | null> | undefined;
   return () => {
     if (now() - last < 60000) return Promise.resolve(cached);
     return (pending ??= (async () => {
       try {
         const token = accountToken(await readCredentials());
         // No sign-in on this daemon: DeepSeek is simply not shown.
-        cached = token ? (fromSummary(await fetchSummary(token)) ?? cached) : null;
+        if (!token) cached = null;
+        else {
+          const balance = fromSummary(await fetchSummary(token));
+          if (balance) cached = { ...balance, fetchedAt: new Date(now()).toISOString() };
+        }
       } catch {
         // A failed request keeps the last balance instead of showing zero.
       } finally {

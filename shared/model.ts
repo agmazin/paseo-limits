@@ -6,8 +6,8 @@ export interface LimitWindow {
 export interface Snapshot {
   testData?: boolean;
   personal?: boolean;
-  claude?: { windows: LimitWindow[] };
-  codex?: { windows: LimitWindow[] };
+  claude?: { windows: LimitWindow[]; unavailable?: true };
+  codex?: { windows: LimitWindow[]; unavailable?: true };
   // DeepSeek sells no subscription windows: the company account balance is shown instead.
   deepseek?: DeepseekBalance;
   fetchedAt: string;
@@ -16,6 +16,7 @@ export interface DeepseekBalance {
   currency: "USD" | "CNY";
   balance: number;
   spent?: number;
+  fetchedAt?: string;
 }
 const money = (v: number) => v.toFixed(2).replace(".", ",");
 export const balanceText = (b: DeepseekBalance) =>
@@ -33,12 +34,12 @@ export function windows(s: Snapshot | null) {
           ? [18000, 604800].includes(w.windowSeconds)
           : w.windowSeconds === 604800,
       ) ?? [];
-    return list.length
+    return list.length || s?.[key]?.unavailable
       ? [
           {
             key,
             name: key === "claude" ? "Claude" : "Codex",
-            windows: [...list].sort(
+            windows: s?.[key]?.unavailable ? [] : [...list].sort(
               (a, b) => a.windowSeconds - b.windowSeconds,
             ),
           },
@@ -51,6 +52,19 @@ export const color = (p: number) =>
   p >= 90 ? "#d9534f" : p >= 70 ? "#c98a2e" : "#3f8f6a";
 export const stale = (s: Snapshot | null, now = Date.now()) =>
   !s || now - Date.parse(s.fetchedAt) > 600000;
+export function freshness(s: Snapshot | null, now: number) {
+  const quotaOld = stale(s, now);
+  const balanceDate = s?.deepseek?.fetchedAt ?? s?.fetchedAt;
+  const balanceOld = !!balanceDate && now - Date.parse(balanceDate) > 600000;
+  if (!s || (!quotaOld && !balanceOld)) return { quotaOld, balanceOld, note: "" };
+  const sources = windows(s).filter(p => p.windows.length).map(p => ({ name: p.name, date: s.fetchedAt, old: quotaOld }));
+  if (s.deepseek && balanceDate) sources.push({ name: "DeepSeek", date: balanceDate, old: balanceOld });
+  const old = sources.filter(source => source.old);
+  const time = (date: string) => new Date(date).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const sameDate = old.length > 0 && old.length === sources.length && old.every(source => source.date === old[0].date);
+  const note = sameDate ? `данные от ${time(old[0].date)}` : old.map(source => `${source.name} от ${time(source.date)}`).join(" · ");
+  return { quotaOld, balanceOld, note };
+}
 // Shown as a label: capitalised, abbreviations end with a dot.
 export const windowName = (s: number, narrow = false) =>
   s === 18000 ? (narrow ? "5 ч" : "Сессия") : narrow ? "Нед." : "Неделя";
@@ -78,7 +92,7 @@ export const label = (s: Snapshot | null) =>
   (s?.personal ? "Мои лимиты · " : "") + [
     ...windows(s).map(
       (p) =>
-        `${p.name} ${p.windows.map((w) => `${w.usedPercent}% использовано`).join(" · ")}`,
+        p.windows.length ? `${p.name} ${p.windows.map((w) => `${w.usedPercent}% использовано`).join(" · ")}` : `${p.name} недоступен`,
     ),
     ...(s?.deepseek ? [`DeepSeek ${balanceText(s.deepseek)}`] : []),
   ].join(" | ") || "Лимиты недоступны";

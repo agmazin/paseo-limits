@@ -2,12 +2,13 @@ import { useSyncExternalStore } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginButtonContentProps } from "@getpaseo/plugin/client";
 import type { LimitsState } from "./state";
-import { balanceText, balanceTooltip, color, exact, stale, windowName, windows } from "../shared/model";
+import { balanceText, balanceTooltip, color, exact, freshness, windowName, windows } from "../shared/model";
 export function Details({
   theme,
   state,
 }: PluginButtonContentProps & { state: LimitsState }) {
   const { data, busy, now } = useSyncExternalStore(state.subscribe, state.get);
+  const { note } = freshness(data, now);
   return (
     <View style={{ gap: 14, minWidth: 250, maxWidth: 360 }}>
       <Pressable
@@ -33,6 +34,7 @@ export function Details({
           >
             {p.name}
           </Text>
+          {!p.windows.length && <Text style={{ color: theme.colors.foregroundMuted }}>Недоступен</Text>}
           {p.windows.map((w) => (
             <View key={w.windowSeconds} style={{ gap: 5 }}>
               <View
@@ -96,15 +98,7 @@ export function Details({
           Данные пока недоступны
         </Text>
       )}
-      {data && stale(data, now) && (
-        <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>
-          данные от{" "}
-          {new Date(data.fetchedAt).toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
-      )}
+      {!!note && <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>{note}</Text>}
     </View>
   );
 }
