@@ -29,15 +29,15 @@ export function createService(d: Dependencies) {
     )
       return before;
     lastKick = d.now();
+    const until = lastKick + 5000;
     try {
       await d.kick();
-      const until = d.now() + 30000;
       while (d.now() < until) {
         await d.sleep(500);
         const next = await read();
         if (next && next.fetchedAt !== before?.fetchedAt) return next;
       }
-      d.log("Поллер не обновил fetchedAt за 30 секунд");
+      d.log("Поллер ещё обновляется. Следующее чтение подхватит снимок");
     } catch {
       d.log("Не удалось запустить поллер лимитов через launchctl");
     }

@@ -45,10 +45,12 @@ test("texts and tones", () => {
 test("reader caches for a minute, keeps the last balance on failure, hides without sign-in", async () => {
   let clock = 0, calls = 0, fail = false, creds = yaml;
   const read = deepseekReader(async () => creds, async (token) => { calls++; assert.equal(token, "tok_abc123"); if (fail) throw Error("net"); return summary("1.5"); }, () => clock);
-  assert.equal((await read())?.balance, 1.5);
+  const first = await read();
+  assert.equal(first?.balance, 1.5);
+  assert.equal(first?.fetchedAt, new Date(0).toISOString());
   await read(); assert.equal(calls, 1);
   clock = 61000; fail = true;
-  assert.equal((await read())?.balance, 1.5, "failure keeps the last balance");
+  assert.deepEqual(await read(), first, "failure keeps both the balance and the successful read time");
   clock = 122000; creds = "version: 1\n";
   assert.equal(await read(), null, "signed out: not shown");
 });

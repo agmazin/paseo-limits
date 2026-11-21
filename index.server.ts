@@ -1,12 +1,12 @@
 import { displaySettings } from "./shared/settings";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { writeFile, rename, chmod } from "node:fs/promises";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, rename, chmod } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { readLimits, refreshLimits, snapshotSchema } from "./shared/contracts";
+import { fileSnapshotSchema, readLimits, refreshLimits } from "./shared/contracts";
+import { withTimeout } from "./shared/deadline";
 import { createService } from "./server/service";
 import { demoSnapshot } from "./server/demo";
 import { nativeReader } from "./server/paseo";
@@ -16,15 +16,11 @@ const exec = promisify(execFile);
 export default function contribute(server: PluginServerContext) {
   server.registerSettings(displaySettings);
   const service = createService({
-    read: async () =>
-      snapshotSchema.parse(
-        JSON.parse(
-          await readFile(
-            process.env.PASEO_LIMITS_FILE || join(homedir(), ".multica", "usage-limits.json"),
-            "utf8",
-          ),
-        ),
-      ),
+    read: async () => {
+      const file = process.env.PASEO_LIMITS_FILE || join(homedir(), ".multica", "usage-limits.json");
+      const content = await withTimeout(readFile(file, "utf8"), 1000);
+      return fileSnapshotSchema.parse(JSON.parse(content));
+    },
     kick: async () => {
       if (process.platform !== "darwin" || !process.getuid)
         throw Error("macOS required");
@@ -32,7 +28,6 @@ export default function contribute(server: PluginServerContext) {
         "/bin/launchctl",
         [
           "kickstart",
-          "-k",
           `gui/${process.getuid()}/com.agmazin.multica-usage-push`,
         ],
         { timeout: 5000 },
@@ -44,10 +39,10 @@ export default function contribute(server: PluginServerContext) {
   });
   const dshHome = process.env.PASEO_DEEPSEEK_DSH_HOME || join(homedir(), ".dsh");
   const readDeepseek = deepseekReader(
-    () => readFile(join(dshHome, ".credentials.yaml"), "utf8"),
+    () => withTimeout(readFile(join(dshHome, ".credentials.yaml"), "utf8"), 1000),
     async (token) => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
+      const timer = setTimeout(() => controller.abort(), 4000);
       try {
         const response = await fetch("https://platform.deepseek.com/api/v0/users/get_user_summary", {
           headers: { "x-dsh-auth-token": token },
@@ -55,49 +50,59 @@ export default function contribute(server: PluginServerContext) {
           signal: controller.signal,
         });
         if (!response.ok) throw Error("DeepSeek balance unavailable");
-        return response.json();
+        return await response.json();
       } finally {
         clearTimeout(timer);
       }
     },
   );
-  let readNative: ReturnType<typeof nativeReader> | undefined;
-  let context: Parameters<Parameters<typeof server.handle>[1]>[1] | undefined;
-  let visibility: ReturnType<typeof createVisibility> | undefined;
-  const readSource = async (_:unknown, {paseo}: Parameters<Parameters<typeof server.handle>[1]>[1]) => {
-    if (process.env.PASEO_LIMITS_SOURCE === "paseo" && !process.env.PASEO_LIMITS_FILE) {
-      readNative ??= nativeReader(() => paseo.providers.listUsage());
+  type RequestContext = Parameters<Parameters<typeof server.handle>[1]>[1];
+  let context: RequestContext;
+  const readNative = nativeReader(() => withTimeout(context.paseo.providers.listUsage(), 5000));
+  const visible = createVisibility(() => withTimeout(context.paseo.config.get(), 2000), console.error);
+
+  async function readSource(refresh: boolean) {
+    if (process.env.PASEO_LIMITS_FILE) return service.read();
+    if (process.env.PASEO_LIMITS_SOURCE === "paseo") {
       try { return await readNative(); } catch { return null; }
     }
-    return service.read();
-  };
-  const read = async (input:unknown, next: Parameters<Parameters<typeof server.handle>[1]>[1], refresh = false) => {
-    context=next;
-    const source = refresh && !process.env.PASEO_LIMITS_FILE && process.env.PASEO_LIMITS_SOURCE !== "paseo"
-      ? await service.refresh()
-      : await readSource(input,next);
-    visibility ??= createVisibility(() => next.paseo.config.get(), (message) => console.error(message));
-    const deepseek = await readDeepseek();
-    const withBalance = deepseek ? { ...(source ?? { fetchedAt: new Date().toISOString() }), deepseek } : source;
-    const snapshot=await visibility(demoSnapshot(withBalance,process.env.PASEO_LIMITS_DEMO_RENEW==="true"));
-    const file=process.env.PASEO_LIMITS_EXPORT_FILE;
-    if(file && snapshot){
-      await writeFile(file+".new",JSON.stringify(snapshot),{mode:0o600});
-      await chmod(file+".new",0o600);
-      await rename(file+".new",file);
+    return refresh ? service.refresh() : service.read();
+  }
+
+  async function read(next: RequestContext, refresh = false) {
+    context = next;
+    const [source, deepseek] = await Promise.all([readSource(refresh), readDeepseek()]);
+    const withBalance = deepseek ? { ...(source ?? { fetchedAt: deepseek.fetchedAt }), deepseek } : source;
+    const snapshot = await visible(demoSnapshot(withBalance, process.env.PASEO_LIMITS_DEMO_RENEW === "true"));
+    const file = process.env.PASEO_LIMITS_EXPORT_FILE;
+    if (file && snapshot) {
+      await writeFile(file + ".new", JSON.stringify(snapshot), { mode: 0o600 });
+      await chmod(file + ".new", 0o600);
+      await rename(file + ".new", file);
     }
     return snapshot;
-  };
-  let pending:Promise<unknown>|undefined;
-  const serializedRead = (input:unknown,next: Parameters<Parameters<typeof server.handle>[1]>[1], refresh = false) => {
-    if(pending)return pending as ReturnType<typeof read>;
-    const task=read(input,next,refresh).finally(()=>{pending=undefined;});pending=task;return task;
-  };
-  const timer=process.env.PASEO_LIMITS_EXPORT_FILE?setInterval(()=>{if(context)void serializedRead({},context).catch(()=>console.error("Не удалось обновить серверный снимок лимитов"));},60000):undefined;
-  server.handle(readLimits, serializedRead);
-  server.handle(refreshLimits, async (input, next) => {
-    if (pending) await pending;
-    return serializedRead(input, next, true);
+  }
+
+  let reading: ReturnType<typeof read> | undefined;
+  let refreshing: ReturnType<typeof read> | undefined;
+  function poll(next: RequestContext) {
+    if (reading) return reading;
+    if (refreshing) return refreshing;
+    reading = read(next).finally(() => { reading = undefined; });
+    return reading;
+  }
+
+  server.handle(readLimits, (_, next) => poll(next));
+  server.handle(refreshLimits, (_, next) => {
+    if (refreshing) return refreshing;
+    const refresh = () => read(next, true);
+    const task = reading ? reading.then(refresh, refresh) : refresh();
+    refreshing = task.finally(() => { refreshing = undefined; });
+    return refreshing;
   });
-  return () => {if(timer)clearInterval(timer);};
+
+  const timer = process.env.PASEO_LIMITS_EXPORT_FILE ? setInterval(() => {
+    if (context) void poll(context).catch(() => console.error("Не удалось обновить серверный снимок лимитов"));
+  }, 60000) : undefined;
+  return () => { clearInterval(timer); };
 }

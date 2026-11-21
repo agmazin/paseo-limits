@@ -93,7 +93,7 @@ test("missing file and failed launch do not discard last good values or reject",
   assert.equal(await service.refresh(), file);
   assert.ok(logs.length >= 2);
 });
-test("timeout stops after 30 seconds and permits retry after cooldown", async () => {
+test("a slow poller releases refresh after five seconds and permits retry after cooldown", async () => {
   let now = 100000,
     kicks = 0;
   const logs: string[] = [];
@@ -109,7 +109,7 @@ test("timeout stops after 30 seconds and permits retry after cooldown", async ()
     log: (s) => logs.push(s),
   });
   await service.refresh();
-  assert.equal(now, 130000);
+  assert.equal(now, 105000);
   assert.equal(logs.length, 1);
   now = 161000;
   await service.refresh();
@@ -124,4 +124,31 @@ test('personal snapshots label their scope and expose both Codex windows without
  assert.equal(windows(personal).find(p=>p.key==='codex')?.windows.length,2);
  assert.equal(label(personal), 'Мои лимиты · Claude 27% использовано | Codex 20% использовано · 30% использовано');
  assert(!label(company).includes('Мои лимиты'));
+});
+
+test("a failed or malformed provider cannot invalidate healthy siblings or claim a cached percentage", async () => {
+  const { fileSnapshotSchema } = await import("../shared/contracts.ts");
+  const { freshness } = await import("../shared/model.ts");
+  const old = new Date(0).toISOString();
+  const now = 3_600_000;
+  const fresh = new Date(now).toISOString();
+  const week = { windowSeconds: 604800, usedPercent: 21, resetsAt: fresh };
+  const codex = { windows: [week] };
+  const deepseek = { currency: "USD", balance: 2, fetchedAt: fresh };
+  for (const claude of [{ windows: [week], error: "http_429" }, { error: "auth" }, { windows: [{ ...week, resetsAt: null }] }, null]) {
+    const s = fileSnapshotSchema.parse({ fetchedAt: old, claude, codex, deepseek });
+    assert.deepEqual(s.claude, { windows: [], unavailable: true });
+    assert.deepEqual(s.codex, codex);
+    assert.deepEqual(s.deepseek, deepseek);
+    assert.equal(label(s), "Claude недоступен | Codex 21% использовано | DeepSeek $2,00");
+    const age = freshness(s, now);
+    assert.equal(age.balanceOld, false);
+    assert.match(age.note, /^Codex от /);
+  }
+  const recovered = fileSnapshotSchema.parse({
+    fetchedAt: fresh, claude: { windows: [{ ...week, resetsAt: null }, week] }, codex, deepseek: { ...deepseek, fetchedAt: old },
+  });
+  assert.deepEqual(recovered.claude, codex);
+  assert.match(label(recovered), /^Claude 21%/);
+  assert.match(freshness(recovered, now).note, /^DeepSeek от /);
 });
